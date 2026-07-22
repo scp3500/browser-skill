@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cli_dispatch.py — v2.4.1 CLI 调度层。统一路由到 commands.run_*"""
+"""cli_dispatch.py — v2.5.1 CLI 调度层。统一路由到 commands.run_*"""
 import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 

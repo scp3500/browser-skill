@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""commands.py — v2.4.1 统一命令实现。所有函数返回 BrowserResult"""
+"""commands.py — v2.5.1 统一命令实现。所有函数返回 BrowserResult"""
 import os, sys, json, yaml, time
 from pathlib import Path
 
@@ -421,7 +421,7 @@ def run_click_expect(click_text: str, expect: str = "", timeout: str = "10") -> 
 
 def run_config_web(args: list[str]) -> BrowserResult:
     """Start web control panel"""
-    port = 8766
+    port = 8767
     host = "127.0.0.1"
     import re
     for i, a in enumerate(args):

@@ -16,7 +16,7 @@ wf_diagnose = bw.wf_diagnose
 
 def wf_read_url(args, ctx=None):
     url = args.get("url", "")
-    chars = int(args.get("chars", args.get("max_chars", "1000")))
+    chars = bw.parse_chars(args, 1000)
     provider = args.get("provider", "auto")
     attempts = []
 

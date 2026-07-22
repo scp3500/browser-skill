@@ -6,7 +6,7 @@ version: 2.5.1
 
 # Browser Skill
 
-> Daemon: 127.0.0.1:8765 | Web UI: 127.0.0.1:8766（默认）
+> Daemon: 127.0.0.1:8765 | Web UI: 127.0.0.1:8767（默认）
 > 阅读优先 dokobot → fallback browser → 视觉诊断 openvl
 
 ## 1. Basic Browser Actions
@@ -57,7 +57,7 @@ version: 2.5.1
 | `preset_list` | 列出可用 presets |
 | `preset_show <name>` | 显示 preset（脱敏）|
 | `preset_use <name> [--dry-run\|--write]` | 应用 preset |
-| `config_web [--port N]` | 启动 Web UI 控制面板（默认 8766，daemon 用 8765）|
+| `config_web [--port N]` | 启动 Web UI 控制面板（默认 8767，daemon 用 8765）|
 | `config_web_status` | 查询 Web UI 状态 |
 | `config_web_stop` | 停止 Web UI |
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""web_server.py — v2.5 Web 服务器管理"""
+"""web_server.py — v2.5.1 Web 服务器管理"""
 import os, sys, subprocess, signal, time, json
 from pathlib import Path
 

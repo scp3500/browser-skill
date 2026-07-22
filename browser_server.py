@@ -280,8 +280,18 @@ def handle(req):
             url = args.get("url", "")
             if not url:
                 fail(req_id, "InputError", "url required", cmd); return
-            chars = int(args.get("chars", "3000"))
-            timeout_ms = int(args.get("timeout", "30000"))
+            try:
+                raw_chars = args.get("chars", "3000")
+                if isinstance(raw_chars, str) and raw_chars.strip().startswith("--"):
+                    chars = 3000
+                else:
+                    chars = int(raw_chars)
+            except (TypeError, ValueError):
+                chars = 3000
+            try:
+                timeout_ms = int(args.get("timeout", "30000"))
+            except (TypeError, ValueError):
+                timeout_ms = 30000
             try:
                 result = new_page_for_url(url, chars, timeout_ms)
                 ok(req_id, result)

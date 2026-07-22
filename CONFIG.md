@@ -1,4 +1,4 @@
-# Browser Skill — Config System (v2.4)
+# Browser Skill — Config System (v2.5.1)
 
 ## 配置路径
 
@@ -258,6 +258,6 @@ trace summary 包含脱敏配置快照：
 - on_error 只能是 continue/stop
 - 拒绝 shell/python/import/未知 action
 
-## v2.5 计划
+## 后续计划
 
-Web UI 配置管理界面（含 preset 可视化、配置编辑器、workflow designer）—— 不在 v2.4 范围内。
+Web UI 已提供基础控制面板；workflow designer / benchmark 仍为后续项。

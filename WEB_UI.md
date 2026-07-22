@@ -1,9 +1,9 @@
-# Browser Skill — Web UI (v2.5)
+# Browser Skill — Web UI (v2.5.1)
 
 ## 启动
 
 ```bash
-browser config_web --port 8766
+browser config_web --port 8767
 ```
 
 输出五行 header + URL（含 token）：
@@ -15,10 +15,10 @@ Fallback used: no
 Trace: 20260522_135500_123_config_web
 
 Browser Skill Control Panel
-URL: http://127.0.0.1:8766/?token=<random_token>
+URL: http://127.0.0.1:8767/?token=<random_token>
 ```
 
-端口冲突：daemon 使用 8765，config_web 默认使用 8766。如果端口被占用，config_web 返回 `Status: error / Error code: invalid_config`。
+端口约定：daemon 使用 8765，config_web 默认使用 8767（避开 openvl 默认 8766）。如果端口被占用，config_web 返回 `Status: error / Error code: invalid_config`。
 
 ## 安全
 
@@ -76,9 +76,9 @@ URL: http://127.0.0.1:8766/?token=<random_token>
 - `config_ui_trace_viewer_check` — 检查 Traces 页面和 API
 
 ```bash
-browser workflow_run config_ui_smoke --var url=http://127.0.0.1:8766/?token=<token>
-browser workflow_run config_ui_security_check --var url=http://127.0.0.1:8766/?token=<token>
-browser workflow_run config_ui_trace_viewer_check --var url=http://127.0.0.1:8766/?token=<token>
+browser workflow_run config_ui_smoke --var url=http://127.0.0.1:8767/?token=<token>
+browser workflow_run config_ui_security_check --var url=http://127.0.0.1:8767/?token=<token>
+browser workflow_run config_ui_trace_viewer_check --var url=http://127.0.0.1:8767/?token=<token>
 ```
 
 ## 已知限制

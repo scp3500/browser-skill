@@ -1,0 +1,6 @@
+# Runtime
+playwright>=1.40.0
+PyYAML>=6.0
+
+# Dev / test
+pytest>=7.0.0

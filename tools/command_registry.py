@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""command_registry.py — v2.4.1 命令注册表（用于 contract 测试）"""
+"""command_registry.py — v2.5.1 命令注册表（用于 contract 测试）"""
 from dataclasses import dataclass, field
 
 
@@ -65,7 +65,7 @@ COMMANDS: dict[str, CommandSpec] = {
     "search_candidates": CommandSpec(name="search_candidates", needs_provider=False, config_command=True, smoke_args=["--query", "test", "--allowed-domain", "example.com"]),
     "search_official": CommandSpec(name="search_official", needs_provider=False, config_command=True, smoke_args=["--query", "test", "--allowed-domain", "example.com"]),
     # web UI 命令
-    "config_web": CommandSpec(name="config_web", needs_provider=False, config_command=True, smoke_args=["--port", "8766"]),
+    "config_web": CommandSpec(name="config_web", needs_provider=False, config_command=True, smoke_args=["--port", "8767"]),
     "config_web_status": CommandSpec(name="config_web_status", needs_provider=False, config_command=True),
     "config_web_stop": CommandSpec(name="config_web_stop", needs_provider=False, config_command=True),
 }

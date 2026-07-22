@@ -11,6 +11,22 @@ from tools.workflow_result import WorkflowResult, error_code_from_diagnose
 last_search_results = []
 
 
+def parse_chars(args, default=3000):
+    """Parse chars/max_chars safely; flags like '--chars' fall back to default."""
+    raw = args.get("chars", args.get("max_chars", default))
+    if raw is None:
+        return int(default)
+    if isinstance(raw, (int, float)):
+        return int(raw)
+    s = str(raw).strip()
+    if not s or s.startswith("--"):
+        return int(default)
+    try:
+        return int(s)
+    except (TypeError, ValueError):
+        return int(default)
+
+
 def _inject_header(obs, wr):
     header = wr.cli_header()
     if obs:
@@ -42,7 +58,7 @@ def _result(ok, steps, url="", title="", text="", snap=None, results=None):
     return r
 
 def wf_read(args, ctx):
-    chars = int(args.get("chars", args.get("max_chars", "3000")))
+    chars = parse_chars(args, 3000)
     r = step("browser", "extract_text", {"selector": "body"})
     text = (r.get("result",{}).get("text","") or "")[:chars] if r.get("ok") else ""
     po = r.get("post_observe") or r.get("result", {})
@@ -62,7 +78,7 @@ def wf_current(args, ctx):
     return wf_open({"url": ""}, ctx)
 
 def wf_article(args, ctx):
-    url, chars = args.get("url",""), int(args.get("chars", args.get("max_chars","3000")))
+    url, chars = args.get("url",""), parse_chars(args, 3000)
     r1 = step("browser", "goto", {"url": url})
     s1 = {"index":1,"cmd":"open","ok":r1.get("ok")}
     if not r1.get("ok"): return _result(False, [s1])
@@ -121,7 +137,7 @@ def wf_open_result(args, ctx):
 def wf_search_read(args, ctx):
     query = args.get("query","")
     n = int(args.get("result",args.get("n",1)))
-    chars = int(args.get("chars",args.get("max_chars","3000")))
+    chars = parse_chars(args, 3000)
     steps_data = []
     r1 = wf_search({"query": query}, ctx)
     steps_data.append({"name":"search","ok":r1.get("ok")})
@@ -146,7 +162,7 @@ def wf_search_read(args, ctx):
     return {"ok":True,"steps":[{"index":1,"cmd":"search","ok":True},{"index":2,"cmd":"open_result","ok":True},{"index":3,"cmd":"read","ok":True}],"observation":_inject_header(obs_body,wr),"_wr":wr,"_url":url,"_title":title,"_text":text}
 
 def wf_wiki_read(args, ctx):
-    query, chars, click = args.get("query",""), int(args.get("chars",args.get("max_chars","3000"))), args.get("click","")
+    query, chars, click = args.get("query",""), parse_chars(args, 3000), args.get("click","")
     url = f"https://en.wikipedia.org/w/index.php?search={quote(query)}"
     steps = []
     r1 = step("browser", "goto", {"url": url})
@@ -177,7 +193,7 @@ def _run_openvl(cmd, args):
 
 def wf_doko_read(args, ctx):
     url = args.get("url", "")
-    chars = int(args.get("chars", args.get("max_chars", "3000")))
+    chars = parse_chars(args, 3000)
     r = _run_dokobot("read", {"url": url})
     ok = r.get("ok")
     text = ""

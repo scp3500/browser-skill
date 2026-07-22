@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""trace_store.py — v2.4.1 统一 trace 写入/读取"""
+"""trace_store.py — v2.5.1 统一 trace 写入/读取"""
 import os, json, time
 from pathlib import Path
 from datetime import datetime

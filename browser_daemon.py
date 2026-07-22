@@ -893,7 +893,12 @@ def _cmd_trace_show(run_id):
     # workflow 命令
     rest = args[1:]
     if args[0] == "read":
-        chars = rest[0] if rest else "3000"
+        chars = "3000"
+        if rest:
+            if rest[0] == "--chars" and len(rest) > 1:
+                chars = rest[1]
+            else:
+                chars = _positional_or_default(rest, 0, "3000")
         r = _send_workflow("read", {"chars": chars})
         print_result(r); return
     if args[0] == "open":
@@ -904,7 +909,13 @@ def _cmd_trace_show(run_id):
         print_result(r); return
     if args[0] == "article":
         url = rest[0] if rest else ""
-        mc = rest[1] if len(rest) > 1 else "3000"
+        # support: article <url> --chars N  OR article <url> <chars>
+        mc = "3000"
+        if len(rest) > 1:
+            if rest[1] == "--chars" and len(rest) > 2:
+                mc = rest[2]
+            else:
+                mc = _positional_or_default(rest, 1, "3000")
         r = _send_workflow("article", {"url": url, "chars": mc})
         print_result(r); return
     if args[0] == "search":
@@ -948,7 +959,12 @@ def _cmd_trace_show(run_id):
     # new provider workflows
     if args[0] == "doko_read":
         url = rest[0] if rest else ""
-        chars = rest[1] if len(rest) > 1 else "3000"
+        chars = "3000"
+        if len(rest) > 1:
+            if rest[1] == "--chars" and len(rest) > 2:
+                chars = rest[2]
+            else:
+                chars = _positional_or_default(rest, 1, "3000")
         r = _send_workflow("doko_read", {"url": url, "chars": chars})
         print_result(r); return
     if args[0] == "images":
@@ -1094,6 +1110,19 @@ def _parse(args):
 
 
 atexit.register(_write_final_trace)
+
+def _positional_or_default(rest, index, default="3000"):
+    """Return rest[index] only if it is a real value, not a CLI flag like --chars."""
+    if len(rest) <= index:
+        return default
+    val = rest[index]
+    if val is None:
+        return default
+    s = str(val).strip()
+    if not s or s.startswith("--"):
+        return default
+    return s
+
 
 def main():
     args = sys.argv[1:]
@@ -1270,7 +1299,12 @@ def main():
     # workflow 命令
     rest = args[1:]
     if args[0] == "read":
-        chars = rest[0] if rest else "3000"
+        chars = "3000"
+        if rest:
+            if rest[0] == "--chars" and len(rest) > 1:
+                chars = rest[1]
+            else:
+                chars = _positional_or_default(rest, 0, "3000")
         r = _send_workflow("read", {"chars": chars})
         print_result(r); return
     if args[0] == "open":
@@ -1281,7 +1315,13 @@ def main():
         print_result(r); return
     if args[0] == "article":
         url = rest[0] if rest else ""
-        mc = rest[1] if len(rest) > 1 else "3000"
+        # support: article <url> --chars N  OR article <url> <chars>
+        mc = "3000"
+        if len(rest) > 1:
+            if rest[1] == "--chars" and len(rest) > 2:
+                mc = rest[2]
+            else:
+                mc = _positional_or_default(rest, 1, "3000")
         r = _send_workflow("article", {"url": url, "chars": mc})
         print_result(r); return
     if args[0] == "search":
@@ -1325,7 +1365,12 @@ def main():
     # new provider workflows
     if args[0] == "doko_read":
         url = rest[0] if rest else ""
-        chars = rest[1] if len(rest) > 1 else "3000"
+        chars = "3000"
+        if len(rest) > 1:
+            if rest[1] == "--chars" and len(rest) > 2:
+                chars = rest[2]
+            else:
+                chars = _positional_or_default(rest, 1, "3000")
         r = _send_workflow("doko_read", {"url": url, "chars": chars})
         print_result(r); return
     if args[0] == "images":
