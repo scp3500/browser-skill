@@ -1,0 +1,24 @@
+name: research_official
+description: Search for official documentation and website of a topic
+inputs:
+  - name: topic
+    description: Topic to research (e.g. "Playwright", "React")
+steps:
+  - id: search_official
+    action: search_read
+    args:
+      query: "{topic} official docs"
+      chars: 1200
+      fallback: true
+    save_as: official_docs
+    on_error: continue
+  - id: search_website
+    action: search_read
+    args:
+      query: "{topic} official website"
+      chars: 1200
+      fallback: true
+    save_as: official_website
+    on_error: continue
+output:
+  summary: "Sources:\n{official_docs.url}\n{official_website.url}"

@@ -1,0 +1,50 @@
+name: config_ui_smoke
+description: "Self-audit: Web UI smoke check - all pages load correctly"
+inputs:
+  - name: url
+    description: URL of the Web UI (e.g. http://127.0.0.1:8765/?token=xxx)
+steps:
+  - id: check_dashboard
+    action: read_url
+    args:
+      url: "{url}"
+      chars: 3000
+    save_as: dashboard
+    on_error: continue
+  - id: check_config_page
+    action: read_url
+    args:
+      url: "{url}config/"
+      chars: 3000
+    save_as: config_page
+    on_error: continue
+  - id: check_presets_page
+    action: read_url
+    args:
+      url: "{url}presets/"
+      chars: 3000
+    save_as: presets_page
+    on_error: continue
+  - id: check_workflows_page
+    action: read_url
+    args:
+      url: "{url}workflows/"
+      chars: 3000
+    save_as: workflows_page
+    on_error: continue
+  - id: check_traces_page
+    action: read_url
+    args:
+      url: "{url}traces/"
+      chars: 3000
+    save_as: traces_page
+    on_error: continue
+  - id: check_diagnostics_page
+    action: read_url
+    args:
+      url: "{url}diagnostics/"
+      chars: 3000
+    save_as: diagnostics_page
+    on_error: continue
+output:
+  summary: "Config UI smoke check complete"

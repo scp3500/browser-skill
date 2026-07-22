@@ -1,0 +1,22 @@
+name: config_ui_trace_viewer_check
+description: "Self-audit: Web UI trace viewer - steps display correctly"
+inputs:
+  - name: url
+    description: URL of the Web UI (e.g. http://127.0.0.1:8765/?token=xxx)
+steps:
+  - id: check_traces_page
+    action: read_url
+    args:
+      url: "{url}traces/"
+      chars: 3000
+    save_as: traces_page
+    on_error: continue
+  - id: check_api_traces
+    action: read_url
+    args:
+      url: "{url}api/traces"
+      chars: 3000
+    save_as: api_traces
+    on_error: continue
+output:
+  summary: "Trace viewer check complete"

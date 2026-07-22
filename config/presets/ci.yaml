@@ -1,0 +1,9 @@
+# ci — CI 环境配置（dokobot 不可用）
+providers:
+  default: browser
+  dokobot:
+    enabled: false
+screenshots:
+  enabled: false
+trace:
+  retention_days: 1

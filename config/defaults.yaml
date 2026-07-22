@@ -1,0 +1,47 @@
+# Browser Skill — 默认配置
+# 优先级：built-in < defaults.yaml < user config < env vars < CLI flags
+providers:
+  default: auto
+  browser:
+    enabled: true
+  dokobot:
+    enabled: true
+    base_url: "http://127.0.0.1:2024"
+    token_env: DOKOBOT_TOKEN
+  openvl:
+    enabled: false
+    endpoint: "http://127.0.0.1:8766"
+    api_key_env: OPENVL_API_KEY
+    default_prompt: true
+
+timeouts:
+  page_load_ms: 30000
+  action_ms: 10000
+  read_ms: 30000
+  openvl_ms: 60000
+  workflow_step_ms: 60000
+
+trace:
+  enabled: true
+  retention_days: 7
+  sanitize: true
+
+screenshots:
+  enabled: true
+  retention_count: 50
+
+workflows:
+  enabled: true
+  directory: workflow_specs
+  allowed_actions:
+    - read_url
+    - search_read
+    - diagnose
+    - diagnose_and_recover
+    - wait_text
+    - assert_text
+    - click_expect
+    - screenshot_ask
+
+presets:
+  default: local

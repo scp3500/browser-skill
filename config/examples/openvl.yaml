@@ -1,0 +1,6 @@
+# openvl — OpenVL 作为默认视觉分析提供者
+providers:
+  default: auto
+  openvl:
+    enabled: true
+    default_prompt: true

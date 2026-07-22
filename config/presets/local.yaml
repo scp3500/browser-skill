@@ -1,0 +1,11 @@
+# local — 本地开发默认配置
+providers:
+  default: auto
+  browser:
+    enabled: true
+  dokobot:
+    enabled: true
+  openvl:
+    enabled: true
+screenshots:
+  retention_count: 100

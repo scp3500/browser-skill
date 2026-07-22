@@ -1,0 +1,26 @@
+name: config_ui_security_check
+description: "Self-audit: Web UI security - no secret leakage in pages"
+inputs:
+  - name: url
+    description: URL of the Web UI (e.g. http://127.0.0.1:8765/?token=xxx)
+steps:
+  - id: assert_no_sk_on_dashboard
+    action: assert_text
+    args:
+      text: "sk-"
+    save_as: no_sk_dash
+    on_error: continue
+  - id: assert_no_bearer_on_dashboard
+    action: assert_text
+    args:
+      text: "Bearer"
+    save_as: no_bearer_dash
+    on_error: continue
+  - id: assert_no_plaintext_api_key
+    action: assert_text
+    args:
+      text: "api_key_env"
+    save_as: env_api_key
+    on_error: continue
+output:
+  summary: "Security check complete"

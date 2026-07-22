@@ -1,0 +1,22 @@
+name: pricing_compare
+description: Search for pricing information for specified products
+inputs:
+  - name: products_text
+    description: Comma-separated list of products to compare (e.g. "Playwright, Cypress, Selenium")
+    required: false
+  - name: products
+    description: List of products (alternative structured input)
+    type: list
+steps:
+  - id: product_loop
+    action: search_read
+    args:
+      query: "{item} pricing official"
+      chars: 1000
+      fallback: true
+    save_as: "pricing_{item_index}"
+    on_error: continue
+    foreach: products
+    as: item
+output:
+  summary: "Pricing sources by product"

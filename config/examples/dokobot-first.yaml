@@ -1,0 +1,7 @@
+# dokobot-first — 优先使用 dokobot 读取页面，Playwright 作为 fallback
+providers:
+  default: auto
+  dokobot:
+    enabled: true
+  browser:
+    enabled: true

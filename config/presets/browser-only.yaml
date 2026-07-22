@@ -1,0 +1,7 @@
+# browser-only — 只使用 Playwright browser，不依赖外部服务
+providers:
+  default: browser
+  dokobot:
+    enabled: false
+  openvl:
+    enabled: false

@@ -1,0 +1,29 @@
+name: web_qa
+description: Open a URL, verify page loads correctly, and check for expected text
+inputs:
+  - name: url
+    description: URL to check
+  - name: expected_text
+    description: Text that should be present on the page
+steps:
+  - id: read_page
+    action: read_url
+    args:
+      url: "{url}"
+      provider: browser
+      chars: 500
+    save_as: page_content
+    on_error: stop
+  - id: diagnose_page
+    action: diagnose
+    args: {}
+    save_as: page_health
+    on_error: continue
+  - id: verify_text
+    action: assert_text
+    args:
+      text: "{expected_text}"
+    save_as: text_check
+    on_error: continue
+output:
+  summary: "URL: {url}\nPage status: {page_health.text}\nExpected text present: {text_check.ok}"

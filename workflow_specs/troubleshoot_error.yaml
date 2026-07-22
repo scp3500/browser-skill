@@ -1,0 +1,32 @@
+name: troubleshoot_error
+description: Search for error message solutions across official docs, GitHub, and StackOverflow
+inputs:
+  - name: error
+    description: Error message to troubleshoot
+steps:
+  - id: search_official
+    action: search_read
+    args:
+      query: "{error} official documentation"
+      chars: 1200
+      fallback: true
+    save_as: official
+    on_error: continue
+  - id: search_github
+    action: search_read
+    args:
+      query: "{error} github issue"
+      chars: 1200
+      fallback: true
+    save_as: github
+    on_error: continue
+  - id: search_stackoverflow
+    action: search_read
+    args:
+      query: "{error} stackoverflow"
+      chars: 1200
+      fallback: true
+    save_as: stackoverflow
+    on_error: continue
+output:
+  summary: "Findings:\n- Official: {official.url}\n- GitHub: {github.url}\n- StackOverflow: {stackoverflow.url}"
