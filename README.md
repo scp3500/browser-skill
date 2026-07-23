@@ -83,6 +83,7 @@ browser config_show
 - 用户配置：`%LOCALAPPDATA%\Pi\browser\config.yaml`（Windows）或 `~/.config/pi/browser/config.yaml`
 - 内置 defaults：`config/defaults.yaml`
 - 详细说明：`SKILL.md`、`CONFIG.md`、`WEB_UI.md`、`docs/ARCHITECTURE.md`
+- OpenCode Go 用量无头读取：`docs/OPENCODE_USAGE.md`
 
 密钥只用环境变量引用，不要写明文。
 

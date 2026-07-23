@@ -61,6 +61,8 @@ User config (Windows): `%LOCALAPPDATA%\Pi\browser\config.yaml`
 - `SKILL.md` — command reference for Pi agents
 - `CONFIG.md` — config schema & presets
 - `WEB_UI.md` — control panel API
+- `docs/OPENCODE_USAGE.md` — 本机无头读 OpenCode Go 用量（profile + URL）
+- 跨 session 备忘：`E:\pi_agent\memory\projects\2026-07-23-browser-skill.md`
 
 ## Browser profile & login state
 
