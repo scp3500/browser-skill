@@ -4,22 +4,20 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-# Mock bw before importing v22
-with patch("browser_workflows_v22.bw") as mock_bw, \
-     patch("browser_workflows_v22._run_dokobot") as mock_doko, \
-     patch("browser_workflows_v22.step") as mock_step, \
-     patch("browser_workflows_v22.wf_diagnose") as mock_diag:
-    mock_bw.run.return_value = {"ok": True, "_wr": MagicMock(error_code="ok", provider_used="browser", fallback_used=False, status="ok")}
+# Import merged workflows module (formerly v22)
+with patch("browser_workflows._run_dokobot") as mock_doko, \
+     patch("browser_workflows.step") as mock_step, \
+     patch("browser_workflows.wf_diagnose") as mock_diag:
     mock_doko.return_value = {"ok": True, "result": {"text": "dokobot content"}}
     mock_step.return_value = {"ok": True, "result": {"text": "browser content"}}
     mock_diag.return_value = {"ok": True, "_wr": MagicMock(error_code="ok", provider_used="openvl", fallback_used=False, status="ok")}
-    
-    import browser_workflows_v22 as wf22
+
+    import browser_workflows as wf22
     from tools.workflow_result import WorkflowResult, validate_error_code, error_code_from_diagnose
 
 
 def test_read_url_dokobot_success():
-    with patch("browser_workflows_v22._run_dokobot") as mock:
+    with patch("browser_workflows._run_dokobot") as mock:
         mock.return_value = {"ok": True, "result": {"text": "hello world"}}
         r = wf22.run("read_url", {"url": "https://example.com", "provider": "dokobot"})
         assert r.get("ok") == True
@@ -29,7 +27,7 @@ def test_read_url_dokobot_success():
 
 
 def test_read_url_auto_dokobot_success():
-    with patch("browser_workflows_v22._run_dokobot") as mock:
+    with patch("browser_workflows._run_dokobot") as mock:
         mock.return_value = {"ok": True, "result": {"text": "dokobot success"}}
         r = wf22.run("read_url", {"url": "https://example.com", "provider": "auto"})
         assert r.get("ok") == True
@@ -39,8 +37,8 @@ def test_read_url_auto_dokobot_success():
 
 
 def test_read_url_auto_fallback_browser():
-    with patch("browser_workflows_v22._run_dokobot") as mock_doko, \
-         patch("browser_workflows_v22.step") as mock_step:
+    with patch("browser_workflows._run_dokobot") as mock_doko, \
+         patch("browser_workflows.step") as mock_step:
         mock_doko.return_value = {"ok": False}
         mock_step.side_effect = [
             {"ok": True, "result": {"url": "https://example.com"}},  # goto
@@ -54,8 +52,8 @@ def test_read_url_auto_fallback_browser():
 
 
 def test_read_url_all_fail():
-    with patch("browser_workflows_v22._run_dokobot") as mock_doko, \
-         patch("browser_workflows_v22.step") as mock_step:
+    with patch("browser_workflows._run_dokobot") as mock_doko, \
+         patch("browser_workflows.step") as mock_step:
         mock_doko.return_value = {"ok": False}
         mock_step.side_effect = [
             {"ok": True, "result": {"url": "https://example.com"}},  # goto
@@ -81,8 +79,8 @@ def test_not_found_error_code():
 
 def test_diagnose_blocked_popup_triggers_close_popups():
     """diagnose_and_recover only runs close_popups on blocked_popup"""
-    with patch("browser_workflows_v22.wf_diagnose") as mock_diag, \
-         patch("browser_workflows_v22.wf_close_popups") as mock_cp:
+    with patch("browser_workflows.wf_diagnose") as mock_diag, \
+         patch("browser_workflows.wf_close_popups") as mock_cp:
         # blocked_popup case
         wr = MagicMock()
         wr.error_code = "blocked_popup"
@@ -97,8 +95,8 @@ def test_diagnose_blocked_popup_triggers_close_popups():
 
 
 def test_diagnose_captcha_does_not_trigger_close_popups():
-    with patch("browser_workflows_v22.wf_diagnose") as mock_diag, \
-         patch("browser_workflows_v22.wf_close_popups") as mock_cp:
+    with patch("browser_workflows.wf_diagnose") as mock_diag, \
+         patch("browser_workflows.wf_close_popups") as mock_cp:
         wr = MagicMock()
         wr.error_code = "blocked_captcha"
         mock_diag.return_value = {"ok": False, "steps": [], "_wr": wr}
@@ -107,14 +105,14 @@ def test_diagnose_captcha_does_not_trigger_close_popups():
 
 
 def test_wait_text_success():
-    with patch("browser_workflows_v22.step") as mock_step:
+    with patch("browser_workflows.step") as mock_step:
         mock_step.return_value = {"ok": True, "result": {"text": "hello world"}}
         r = wf22.run("wait_text", {"text": "hello", "timeout": 1})
         assert r.get("ok") == True
 
 
 def test_wait_text_timeout():
-    with patch("browser_workflows_v22.step") as mock_step:
+    with patch("browser_workflows.step") as mock_step:
         mock_step.return_value = {"ok": True, "result": {"text": "other text"}}
         r = wf22.run("wait_text", {"text": "notfound", "timeout": 1})
         assert r.get("ok") == False
@@ -123,14 +121,14 @@ def test_wait_text_timeout():
 
 
 def test_assert_text_found():
-    with patch("browser_workflows_v22.step") as mock_step:
+    with patch("browser_workflows.step") as mock_step:
         mock_step.return_value = {"ok": True, "result": {"text": "hello world"}}
         r = wf22.run("assert_text", {"text": "hello"})
         assert r.get("ok") == True
 
 
 def test_assert_text_not_found():
-    with patch("browser_workflows_v22.step") as mock_step:
+    with patch("browser_workflows.step") as mock_step:
         mock_step.return_value = {"ok": True, "result": {"text": "hello world"}}
         r = wf22.run("assert_text", {"text": "goodbye"})
         assert r.get("ok") == False
@@ -167,7 +165,7 @@ def test_bot_detection_maps_to_blocked_bot_detection():
 
 def test_search_read_fallback_browser_read_fails_dokobot_succeeds():
     """browser read fails -> dokobot fallback succeeds"""
-    with patch("browser_workflows_v22.step") as mock_step,          patch("browser_workflows_v22._run_dokobot") as mock_doko:
+    with patch("browser_workflows.step") as mock_step,          patch("browser_workflows._run_dokobot") as mock_doko:
         # search: browser search OK
         # open_result: goto + observe OK
         # read: browser extract_text empty/fails

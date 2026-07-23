@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from browser_workflows_v22 import run as run_workflow
+from browser_workflows import run as run_workflow
 from tools.workflow_result import WorkflowResult
 from browser_daemon import sanitize
 

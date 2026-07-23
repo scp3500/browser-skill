@@ -3,7 +3,8 @@
 Pi Coding Agent 的 **Browser Skill**：用 Playwright 做本地浏览器自动化，配合 dokobot 读网页、OpenVL 看图。
 
 > **定位**：这是 Pi skill 后端，不是通用 Selenium/Playwright 框架。  
-> **状态**：个人维护，Issue 不保证回复。当前仓库默认 private。
+> **状态**：个人维护，Issue 不保证回复。  
+> **密钥**：只通过环境变量引用（如 `OPENVL_API_KEY` / `DOKOBOT_TOKEN`），仓库内无明文凭据。
 
 ## 功能概览
 
@@ -68,7 +69,7 @@ pytest tests/ -q
 ```
 browser_daemon.py      # CLI + daemon 入口
 browser_server.py      # Playwright 常驻服务
-browser_workflows*.py  # 复合工作流
+browser_workflows.py   # 复合工作流（单轨）
 tools/                 # config / contract / web UI / sanitize
 workflow_specs/        # YAML 工作流
 config/presets/        # 场景预设

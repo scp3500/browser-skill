@@ -23,8 +23,6 @@ from urllib.parse import quote
 sys.path.insert(0, os.path.dirname(__file__))
 from browser_agent import step, reset_trace, get_trace
 import browser_workflows as workflows
-import browser_workflows_v22 as wf22
-WF22_NAMES = {"read_url","close_popups","diagnose_and_recover","wait_text","assert_text","click_expect"}
 
 
 
@@ -276,7 +274,7 @@ def _handle(conn):
             _t0 = time.monotonic()
             
             if wf:
-                result = (wf22.run(wf, req.get("args", {})) if wf in WF22_NAMES else workflows.run(wf, req.get("args", {})))
+                result = workflows.run(wf, req.get("args", {}))
                 result["_wf_name"] = wf
                 # Inject trace_id into _wr
                 wr = result.get("_wr")
