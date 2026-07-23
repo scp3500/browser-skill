@@ -506,7 +506,7 @@ async function testBrowser() {{
                 s.connect(("127.0.0.1", 8765))
                 s.close()
                 browser_ok = True
-            except:
+            except OSError:
                 pass
             env_status = {}
             for v in ["OPENVL_API_KEY", "DOKOBOT_TOKEN", "BROWSER_TOKEN"]:

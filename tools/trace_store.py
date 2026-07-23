@@ -80,7 +80,7 @@ def list_traces(runs_dir: Path = None, limit: int = 20) -> list[dict]:
                 try:
                     data = json.loads(tf.read_text(encoding="utf-8"))
                     runs.append(data.get("summary", {}))
-                except:
+                except (OSError, json.JSONDecodeError, TypeError, ValueError):
                     pass
     return runs
 

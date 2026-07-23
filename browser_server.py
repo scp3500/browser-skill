@@ -81,7 +81,7 @@ def new_page_for_url(url, chars=3000, timeout_ms=30000):
             np.goto(url, timeout=int(timeout_ms))
             for state in ("domcontentloaded", "networkidle"):
                 try: np.wait_for_load_state(state, timeout=5000)
-                except: pass
+                except Exception: pass
             np.wait_for_timeout(500)
             title = np.title()
             text = np.inner_text("body") or ""
@@ -91,7 +91,7 @@ def new_page_for_url(url, chars=3000, timeout_ms=30000):
             return {"url": np_url, "title": title, "text": text}
         finally:
             try: np.close()
-            except: pass
+            except Exception: pass
     except Exception as ex:
         _tb.print_exc(file=sys.stderr)
         raise
@@ -306,7 +306,7 @@ def handle(req):
                     BROWSER.close()
                 if P:
                     P.stop()
-            except:
+            except Exception:
                 pass
             PAGE = None
             BROWSER = None
@@ -327,7 +327,7 @@ def _wait_stable(page):
     for state in ("domcontentloaded", "networkidle"):
         try:
             page.wait_for_load_state(state, timeout=5000)
-        except:
+        except Exception:
             pass
     page.wait_for_timeout(500)
 
@@ -371,7 +371,7 @@ def _collect_snapshot(page, max_items):
                     item["bbox"] = {"x": round(box["x"], 1), "y": round(box["y"], 1),
                                     "width": round(box["width"], 1), "height": round(box["height"], 1)}
                 items.append(item)
-            except:
+            except Exception:
                 pass
         if len(items) >= max_items:
             break

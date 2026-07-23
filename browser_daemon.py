@@ -57,7 +57,7 @@ def _cleanup_screenshots(screenshot_dir=None):
     files = sorted(sdir.glob("browser_*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
     for f in files[_SCREENSHOT_MAX_FILES:]:
         try: f.unlink()
-        except: pass
+        except OSError: pass
 
 
 # ===== Trace persistence =====
@@ -183,7 +183,7 @@ def _write_final_trace():
         if wr and isinstance(wr, dict):
             from tools.workflow_result import WorkflowResult
             try: summary = WorkflowResult(**wr).summary()
-            except: pass
+            except (TypeError, ValueError, KeyError): pass
         status = summary.get("status", "error") if summary else ("ok" if _last_trace.get("ok") else "error")
         _write_trace(started, cmd, args, steps, status=status,
                      error=_last_trace.get("error"), summary=summary,
@@ -208,14 +208,14 @@ def can_connect():
     try:
         s = socket.create_connection((HOST, PORT), timeout=1)
         s.close(); return True
-    except: return False
+    except OSError: return False
 
 
 def _connect(timeout=30):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(timeout)
     try: s.connect((HOST, PORT)); return s
-    except: return None
+    except OSError: return None
 
 
 # ============ 服务端 ============
@@ -255,7 +255,7 @@ def _handle(conn):
             data += b
         if not data: return
         try: req = json.loads(data.decode("utf-8"))
-        except:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             conn.sendall(b'{"ok":false,"observation":"bad json"}\n'); return
 
         t = req.get("type", "cmd")
@@ -675,7 +675,7 @@ def main():
             if PID_PATH.exists():
                 pid = int(PID_PATH.read_text().strip())
                 os.kill(pid, 9)
-        except: pass
+        except (OSError, ValueError): pass
         PID_PATH.unlink(missing_ok=True)
         print("daemon killed")
         return

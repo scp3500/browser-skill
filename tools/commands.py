@@ -708,7 +708,7 @@ def _classify_source_type(url: str, allowed_domains: list[str]) -> str:
     try:
         from urllib.parse import urlparse
         hostname = urlparse(url).hostname or ""
-    except:
+    except Exception:
         hostname = ""
     for domain in allowed_domains:
         if hostname == domain or hostname.endswith("." + domain):
@@ -733,7 +733,7 @@ def run_search_candidates(args: list[str]) -> BrowserResult:
             provider = args[i+1]; i += 2; continue
         if args[i] == "--limit" and i+1 < len(args):
             try: limit = int(args[i+1])
-            except: pass
+            except (TypeError, ValueError): pass
             i += 2; continue
         i += 1
 

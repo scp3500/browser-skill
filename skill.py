@@ -54,7 +54,7 @@ def _reader():
                 line = _proc.stdout.readline()
                 if line:
                     _read_buf.append(line.strip())
-            except:
+            except (OSError, ValueError):
                 break
         else:
             time.sleep(0.1)
@@ -114,10 +114,10 @@ def _stop():
             _proc.stdin.write(json.dumps({"id": "stop", "cmd": "close", "args": {}}) + "\n")
             _proc.stdin.flush()
             _proc.wait(timeout=3)
-        except:
+        except Exception:
             try:
                 _proc.kill()
-            except:
+            except OSError:
                 pass
         _proc = None
     _read_stop = True
