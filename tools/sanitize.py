@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""sanitize.py — v2.5.1 全局脱敏"""
+"""sanitize.py — v2.6.0 全局脱敏"""
 import re
 from typing import Any
 

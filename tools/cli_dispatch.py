@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cli_dispatch.py — v2.5.1 CLI 调度层。统一路由到 commands.run_*"""
+"""cli_dispatch.py — v2.6.0 CLI 调度层。统一路由到 commands.run_*"""
 import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -120,6 +120,89 @@ def dispatch(args: list[str]) -> BrowserResult:
             if remaining[i] == "--timeout": timeout = remaining[i+1] if i+1 < len(remaining) else "10"; i += 2; continue
             click_text += " " + remaining[i]; i += 1
         result = run_click_expect(click_text.strip(), expect, timeout)
+    # Tab / wait / locator (v2.6)
+    elif cmd == "tabs":
+        result = run_tabs()
+    elif cmd == "new_tab":
+        url = ""; tab_id = ""
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--id" and i + 1 < len(rest):
+                tab_id = rest[i + 1]; i += 2; continue
+            if not rest[i].startswith("--") and not url:
+                url = rest[i]
+            i += 1
+        result = run_new_tab(url, tab_id)
+    elif cmd == "switch_tab":
+        result = run_switch_tab(rest[0] if rest else "")
+    elif cmd == "close_tab":
+        result = run_close_tab(rest[0] if rest else "")
+    elif cmd == "wait_selector":
+        selector = rest[0] if rest else ""
+        state = "visible"; timeout = "10000"
+        i = 1
+        while i < len(rest):
+            if rest[i] == "--state" and i + 1 < len(rest):
+                state = rest[i + 1]; i += 2; continue
+            if rest[i] == "--timeout" and i + 1 < len(rest):
+                timeout = rest[i + 1]; i += 2; continue
+            i += 1
+        result = run_wait_selector(selector, state, timeout)
+    elif cmd == "wait_url":
+        pattern = rest[0] if rest else ""
+        timeout = "10000"; exact = False
+        i = 1
+        while i < len(rest):
+            if rest[i] == "--timeout" and i + 1 < len(rest):
+                timeout = rest[i + 1]; i += 2; continue
+            if rest[i] == "--exact":
+                exact = True; i += 1; continue
+            i += 1
+        result = run_wait_url(pattern, timeout, exact)
+    elif cmd == "scroll_into_view":
+        selector = rest[0] if rest else ""
+        timeout = "10000"
+        i = 1
+        while i < len(rest):
+            if rest[i] == "--timeout" and i + 1 < len(rest):
+                timeout = rest[i + 1]; i += 2; continue
+            i += 1
+        result = run_scroll_into_view(selector, timeout)
+    elif cmd == "click_role":
+        role = rest[0] if rest else ""
+        name = ""; exact = False; timeout = "10000"
+        i = 1
+        while i < len(rest):
+            if rest[i] == "--name" and i + 1 < len(rest):
+                name = rest[i + 1]; i += 2; continue
+            if rest[i] == "--timeout" and i + 1 < len(rest):
+                timeout = rest[i + 1]; i += 2; continue
+            if rest[i] == "--exact":
+                exact = True; i += 1; continue
+            i += 1
+        result = run_click_role(role, name, exact, timeout)
+    elif cmd == "click_label":
+        label = rest[0] if rest else ""
+        exact = False; timeout = "10000"
+        i = 1
+        while i < len(rest):
+            if rest[i] == "--timeout" and i + 1 < len(rest):
+                timeout = rest[i + 1]; i += 2; continue
+            if rest[i] == "--exact":
+                exact = True; i += 1; continue
+            i += 1
+        result = run_click_label(label, exact, timeout)
+    elif cmd == "click_css":
+        selector = rest[0] if rest else ""
+        timeout = "10000"; wait = True
+        i = 1
+        while i < len(rest):
+            if rest[i] == "--timeout" and i + 1 < len(rest):
+                timeout = rest[i + 1]; i += 2; continue
+            if rest[i] == "--no-wait":
+                wait = False; i += 1; continue
+            i += 1
+        result = run_click_css(selector, timeout, wait)
     else:
         return BrowserResult(status="error", error_code="invalid_mode", provider_used="none",
                               message=f"unknown command: {cmd}")

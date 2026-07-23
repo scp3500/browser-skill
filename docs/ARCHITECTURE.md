@@ -1,4 +1,4 @@
-# Architecture (v2.5.1)
+# Architecture (v2.6.0)
 
 ## Layers
 
@@ -61,3 +61,11 @@ User config (Windows): `%LOCALAPPDATA%\Pi\browser\config.yaml`
 - `SKILL.md` — command reference for Pi agents
 - `CONFIG.md` — config schema & presets
 - `WEB_UI.md` — control panel API
+
+## Browser profile & login state
+
+- Daemon uses `chromium.launch(headless=True)` with an **ephemeral** in-memory profile for the process lifetime.
+- `browser kill` / `restart` / crash **drops cookies and login state**.
+- All tabs share one browser context (same cookie jar).
+- `read_urls_parallel` / `new_page_for_url` open temporary pages on the same browser, outside the tab map, and close them after read.
+- Long-lived login is not supported yet (future: `launch_persistent_context`). For real Chrome login state, prefer dokobot/`--local` against your everyday browser.

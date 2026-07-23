@@ -1,7 +1,7 @@
 ---
 name: browser
 description: 浏览器自动化工具集：打开网页、搜索、读取、诊断、安全点击、预设工作流、配置面板、并行读取
-version: 2.5.1
+version: 2.6.0
 ---
 
 # Browser Skill
@@ -15,10 +15,26 @@ version: 2.5.1
 | `goto <url>` | 打开 URL |
 | `click_id <id>` | 按编号点击 |
 | `click_text <text>` | 按文本点击 |
+| `click_css <css> [--no-wait]` | CSS 点击（默认先 wait visible）|
+| `click_role <role> [--name n]` | 按 ARIA role 点击 |
+| `click_label <label>` | 按 label 点击 |
 | `fill <id> <text>` | 填写输入框 |
 | `press [key]` | 按键（默认 Enter） |
 | `screenshot [path]` | 截图 |
 | `observe` | 观察当前页面 |
+
+### 1a. Tabs & waits (v2.6)
+| Command | Description |
+|---------|-------------|
+| `tabs` | 列出标签与 active |
+| `new_tab [url] [--id id]` | 新建标签并激活 |
+| `switch_tab <id>` | 切换标签 |
+| `close_tab [id]` | 关闭标签（关完最后一个会重建空 tab）|
+| `wait_selector <css> [--state visible]` | 等待元素 |
+| `wait_url <pattern> [--exact]` | 等待 URL |
+| `scroll_into_view <css>` | 滚到元素可见 |
+
+`click_id` / `click_text` 语义不变。登录态随 daemon 生命周期，见 `docs/ARCHITECTURE.md`。
 
 ## 2. Reading and Search
 | Command | Description |

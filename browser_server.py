@@ -26,36 +26,97 @@ import io
 from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+# Only rewrap stdio when running as daemon process (breaks pytest capture if done on import)
+if __name__ == "__main__" or os.environ.get("BROWSER_SERVER_REWRAP_STDIO") == "1":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
 
 P = None
 BROWSER = None
-PAGE = None
+PAGE = None  # always mirrors TABS[ACTIVE_ID]
+TABS = {}
+ACTIVE_ID = "0"
+_TAB_SEQ = 0
 
 
 def log(*args):
     print(*args, file=sys.stderr, flush=True)
 
 
+def _apply_init(page):
+    page.set_extra_http_headers({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    })
+    page.add_init_script(
+        "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });"
+        " window.chrome = { runtime: {} };"
+    )
+
+
+def _sync_page():
+    global PAGE
+    PAGE = TABS.get(ACTIVE_ID)
+
+
+def _next_tab_id():
+    global _TAB_SEQ
+    _TAB_SEQ += 1
+    return f"t{_TAB_SEQ}"
+
+
+def _tab_info(tid, page):
+    try:
+        url = page.url
+    except Exception:
+        url = ""
+    try:
+        title = page.title()
+    except Exception:
+        title = ""
+    return {"id": tid, "url": url, "title": title}
+
+
 def ensure_page():
-    global P, BROWSER, PAGE
-    if PAGE is None:
+    global P, BROWSER, PAGE, TABS, ACTIVE_ID
+    if BROWSER is None:
         P = sync_playwright().start()
         BROWSER = P.chromium.launch(headless=True, args=[
             '--disable-blink-features=AutomationControlled',
             '--no-sandbox',
         ])
-        PAGE = BROWSER.new_page()
-        PAGE.set_extra_http_headers({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        })
-        PAGE.add_init_script('''
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            window.chrome = { runtime: {} };
-        ''')
-    return PAGE
+        page = BROWSER.new_page()
+        _apply_init(page)
+        TABS = {"0": page}
+        ACTIVE_ID = "0"
+        PAGE = page
+    elif not TABS or ACTIVE_ID not in TABS:
+        page = BROWSER.new_page()
+        _apply_init(page)
+        tid = ACTIVE_ID if ACTIVE_ID else "0"
+        TABS[tid] = page
+        ACTIVE_ID = tid
+        PAGE = page
+    else:
+        PAGE = TABS[ACTIVE_ID]
+    return TABS[ACTIVE_ID]
+
+
+def _smart_click(page, locator, args):
+    timeout = int(args.get("timeout", 10000))
+    try:
+        locator.wait_for(state="visible", timeout=timeout)
+    except Exception:
+        pass
+    try:
+        locator.click(timeout=timeout)
+    except Exception:
+        try:
+            locator.scroll_into_view_if_needed(timeout=timeout)
+        except Exception:
+            pass
+        locator.click(timeout=timeout, force=True)
+    _wait_stable(page)
 
 
 def ok(req_id, result):
@@ -75,6 +136,7 @@ def new_page_for_url(url, chars=3000, timeout_ms=30000):
     global BROWSER, PAGE
     import traceback as _tb
     try:
+        ensure_page()
         np = BROWSER.new_page()
         try:
             np.set_viewport_size({"width": 1280, "height": 720})
@@ -97,6 +159,7 @@ def new_page_for_url(url, chars=3000, timeout_ms=30000):
         raise
 
 def handle(req):
+    global ACTIVE_ID, TABS, PAGE, P, BROWSER
     cmd = req.get("cmd", "")
     args = req.get("args", {})
     req_id = req.get("id", "")
@@ -116,7 +179,11 @@ def handle(req):
 
         elif cmd == "click":
             sel = args["selector"]
-            page.click(sel, timeout=args.get("timeout", 10000))
+            timeout = args.get("timeout", 10000)
+            # wait defaults False so click_id path stays stable
+            if args.get("wait"):
+                page.wait_for_selector(sel, state="visible", timeout=timeout)
+            page.click(sel, timeout=timeout)
             _wait_stable(page)
             ok(req_id, {"url": page.url})
 
@@ -276,7 +343,107 @@ def handle(req):
                     result["screenshot_base64"] = b64[:200] + "..." if len(b64) > 200 else b64
             ok(req_id, result)
 
+        elif cmd == "tabs":
+            items = [_tab_info(tid, p) for tid, p in TABS.items()]
+            ok(req_id, {"tabs": items, "active": ACTIVE_ID, "count": len(items)})
+
+        elif cmd == "new_tab":
+            ensure_page()
+            tid = args.get("id") or _next_tab_id()
+            if tid in TABS:
+                fail(req_id, "InputError", f"tab id already exists: {tid}", cmd); return
+            np = BROWSER.new_page()
+            _apply_init(np)
+            TABS[tid] = np
+            ACTIVE_ID = tid
+            _sync_page()
+            url = args.get("url") or ""
+            if url:
+                np.goto(url, timeout=args.get("timeout", 30000))
+                _wait_stable(np)
+            info = _tab_info(tid, np)
+            info["tab_id"] = tid
+            ok(req_id, info)
+
+        elif cmd == "switch_tab":
+            tid = str(args.get("id", ""))
+            if not tid or tid not in TABS:
+                fail(req_id, "NotFound", f"tab not found: {tid}", cmd); return
+            ACTIVE_ID = tid
+            _sync_page()
+            page = TABS[tid]
+            info = _tab_info(tid, page)
+            info["tab_id"] = tid
+            ok(req_id, info)
+
+        elif cmd == "close_tab":
+            ensure_page()
+            tid = str(args.get("id") or ACTIVE_ID)
+            if tid not in TABS:
+                fail(req_id, "NotFound", f"tab not found: {tid}", cmd); return
+            try:
+                TABS[tid].close()
+            except Exception:
+                pass
+            del TABS[tid]
+            if not TABS:
+                page0 = BROWSER.new_page()
+                _apply_init(page0)
+                TABS["0"] = page0
+                ACTIVE_ID = "0"
+            elif ACTIVE_ID == tid:
+                ACTIVE_ID = next(iter(TABS.keys()))
+            _sync_page()
+            remaining = list(TABS.keys())
+            ok(req_id, {"closed": tid, "remaining": remaining, "active": ACTIVE_ID})
+
+        elif cmd == "wait_selector":
+            sel = args.get("selector", "")
+            state = args.get("state", "visible")
+            if state not in ("visible", "attached", "hidden", "detached"):
+                fail(req_id, "InputError", f"invalid state: {state}", cmd); return
+            timeout = int(args.get("timeout", 10000))
+            page.wait_for_selector(sel, state=state, timeout=timeout)
+            ok(req_id, {"selector": sel, "state": state})
+
+        elif cmd == "wait_url":
+            pattern = args.get("pattern", "")
+            timeout = int(args.get("timeout", 10000))
+            exact = bool(args.get("exact", False))
+            if exact:
+                page.wait_for_url(lambda u: u == pattern, timeout=timeout)
+            else:
+                page.wait_for_url(pattern, timeout=timeout)
+            ok(req_id, {"url": page.url, "pattern": pattern})
+
+        elif cmd == "scroll_into_view":
+            sel = args.get("selector", "")
+            timeout = int(args.get("timeout", 10000))
+            el = page.wait_for_selector(sel, state="visible", timeout=timeout)
+            el.scroll_into_view_if_needed(timeout=timeout)
+            box = el.bounding_box()
+            ok(req_id, {"selector": sel, "bbox": box})
+
+        elif cmd == "click_role":
+            role = args.get("role", "")
+            name = args.get("name") or None
+            exact = bool(args.get("exact", False))
+            kwargs = {"exact": exact}
+            if name:
+                kwargs["name"] = name
+            loc = page.get_by_role(role, **kwargs).first
+            _smart_click(page, loc, args)
+            ok(req_id, {"url": page.url, "role": role, "name": name or ""})
+
+        elif cmd == "click_label":
+            label = args.get("label", "")
+            exact = bool(args.get("exact", False))
+            loc = page.get_by_label(label, exact=exact).first
+            _smart_click(page, loc, args)
+            ok(req_id, {"url": page.url, "label": label})
+
         elif cmd == "read_url_new_page":
+
             url = args.get("url", "")
             if not url:
                 fail(req_id, "InputError", "url required", cmd); return
@@ -298,10 +465,13 @@ def handle(req):
             except Exception as ex:
                 fail(req_id, type(ex).__name__, str(ex), cmd)
         elif cmd == "close":
-            global P, BROWSER, PAGE
             try:
-                if PAGE:
-                    PAGE.close()
+                for p in list(TABS.values()):
+                    try:
+                        p.close()
+                    except Exception:
+                        pass
+                TABS = {}
                 if BROWSER:
                     BROWSER.close()
                 if P:
@@ -311,6 +481,7 @@ def handle(req):
             PAGE = None
             BROWSER = None
             P = None
+            ACTIVE_ID = "0"
             ok(req_id, {"closed": True})
 
         else:

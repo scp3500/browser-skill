@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""command_registry.py — v2.5.1 命令注册表（用于 contract 测试）"""
+"""command_registry.py — v2.6.0 命令注册表（用于 contract 测试）"""
 from dataclasses import dataclass, field
 
 
@@ -53,6 +53,18 @@ COMMANDS: dict[str, CommandSpec] = {
     "wait_text": CommandSpec(name="wait_text", needs_daemon=True),
     "assert_text": CommandSpec(name="assert_text", needs_daemon=True),
     "click_expect": CommandSpec(name="click_expect", needs_daemon=True),
+
+    # tab / wait / locator (v2.6)
+    "tabs": CommandSpec(name="tabs", needs_daemon=True),
+    "new_tab": CommandSpec(name="new_tab", needs_daemon=True, smoke_args=["https://example.com"]),
+    "switch_tab": CommandSpec(name="switch_tab", needs_daemon=True, smoke_args=["0"]),
+    "close_tab": CommandSpec(name="close_tab", needs_daemon=True),
+    "wait_selector": CommandSpec(name="wait_selector", needs_daemon=True, smoke_args=["body"]),
+    "wait_url": CommandSpec(name="wait_url", needs_daemon=True, smoke_args=["**/*"]),
+    "scroll_into_view": CommandSpec(name="scroll_into_view", needs_daemon=True, smoke_args=["body"]),
+    "click_role": CommandSpec(name="click_role", needs_daemon=True, smoke_args=["button"]),
+    "click_label": CommandSpec(name="click_label", needs_daemon=True, smoke_args=["Name"]),
+    "click_css": CommandSpec(name="click_css", needs_daemon=True, smoke_args=["body"]),
 
     # trace 命令
     "trace_list": CommandSpec(name="trace_list", needs_provider=False, config_command=True),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""render.py — v2.5.1 统一输出渲染。唯一的 5 行 header 实现。"""
+"""render.py — v2.6.0 统一输出渲染。唯一的 5 行 header 实现。"""
 from tools.contract import BrowserResult, StepResult, NL
 
 

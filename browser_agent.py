@@ -29,6 +29,7 @@ AUTO_OBSERVE_CMDS = {
     "goto", "click", "click_id", "click_text",
     "fill", "fill_id", "fill_label",
     "press", "scroll", "select",
+    "new_tab", "switch_tab", "click_role", "click_label",
 }
 
 DEFAULT_OBSERVE_ARGS = {
@@ -94,8 +95,16 @@ def _summarize(result, tool, cmd):
             visible = sum(1 for x in r.get("snapshot", []) if x.get("visible"))
             text_len = len(r.get("text", ""))
             return f"[browser.observe] {title} | {visible} visible elements | {text_len} chars text | {url}"
-        elif cmd in ("goto", "click", "click_id", "click_text"):
+        elif cmd in ("goto", "click", "click_id", "click_text", "click_role", "click_label"):
             return f"[browser.{cmd}] OK | url: {r.get('url', '')[:80]}"
+        elif cmd == "tabs":
+            return f"[browser.tabs] {r.get('count', len(r.get('tabs', [])))} tabs, active={r.get('active', '')}"
+        elif cmd in ("new_tab", "switch_tab"):
+            return f"[browser.{cmd}] {r.get('tab_id', r.get('id', ''))} | {r.get('url', '')[:80]}"
+        elif cmd == "close_tab":
+            return f"[browser.close_tab] closed={r.get('closed', '')} active={r.get('active', '')}"
+        elif cmd in ("wait_selector", "wait_url", "scroll_into_view"):
+            return f"[browser.{cmd}] OK"
         elif cmd in ("fill", "fill_id"):
             return f"[browser.{cmd}] OK"
         elif cmd == "press":

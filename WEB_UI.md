@@ -1,4 +1,4 @@
-# Browser Skill — Web UI (v2.5.1)
+# Browser Skill — Web UI (v2.6.0)
 
 ## 启动
 

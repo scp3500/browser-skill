@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""commands.py — v2.5.1 统一命令实现。所有函数返回 BrowserResult"""
+"""commands.py — v2.6.0 统一命令实现。所有函数返回 BrowserResult"""
 import os, sys, json, yaml, time
 from pathlib import Path
 
@@ -415,6 +415,87 @@ def run_assert_text(text: str) -> BrowserResult:
 def run_click_expect(click_text: str, expect: str = "", timeout: str = "10") -> BrowserResult:
     resp = _send_cmd("click_expect", {"click_text": click_text, "expect": expect, "timeout": timeout})
     return _result_from_daemon(resp)
+
+
+# ===== Tab / wait / locator commands (v2.6) =====
+
+def run_tabs() -> BrowserResult:
+    return _result_from_daemon(_send_cmd("tabs"))
+
+
+def run_new_tab(url: str = "", tab_id: str = "") -> BrowserResult:
+    args = {}
+    if url:
+        args["url"] = url
+    if tab_id:
+        args["id"] = tab_id
+    return _result_from_daemon(_send_cmd("new_tab", args))
+
+
+def run_switch_tab(tab_id: str) -> BrowserResult:
+    if not tab_id:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="switch_tab requires tab id")
+    return _result_from_daemon(_send_cmd("switch_tab", {"id": tab_id}))
+
+
+def run_close_tab(tab_id: str = "") -> BrowserResult:
+    args = {"id": tab_id} if tab_id else {}
+    return _result_from_daemon(_send_cmd("close_tab", args))
+
+
+def run_wait_selector(selector: str, state: str = "visible", timeout: str = "10000") -> BrowserResult:
+    if not selector:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="wait_selector requires selector")
+    return _result_from_daemon(_send_cmd("wait_selector", {
+        "selector": selector, "state": state, "timeout": timeout,
+    }))
+
+
+def run_wait_url(pattern: str, timeout: str = "10000", exact: bool = False) -> BrowserResult:
+    if not pattern:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="wait_url requires pattern")
+    return _result_from_daemon(_send_cmd("wait_url", {
+        "pattern": pattern, "timeout": timeout, "exact": exact,
+    }))
+
+
+def run_scroll_into_view(selector: str, timeout: str = "10000") -> BrowserResult:
+    if not selector:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="scroll_into_view requires selector")
+    return _result_from_daemon(_send_cmd("scroll_into_view", {
+        "selector": selector, "timeout": timeout,
+    }))
+
+
+def run_click_role(role: str, name: str = "", exact: bool = False, timeout: str = "10000") -> BrowserResult:
+    if not role:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="click_role requires role")
+    return _result_from_daemon(_send_cmd("click_role", {
+        "role": role, "name": name, "exact": exact, "timeout": timeout,
+    }))
+
+
+def run_click_label(label: str, exact: bool = False, timeout: str = "10000") -> BrowserResult:
+    if not label:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="click_label requires label")
+    return _result_from_daemon(_send_cmd("click_label", {
+        "label": label, "exact": exact, "timeout": timeout,
+    }))
+
+
+def run_click_css(selector: str, timeout: str = "10000", wait: bool = True) -> BrowserResult:
+    if not selector:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="click_css requires selector")
+    return _result_from_daemon(_send_cmd("click", {
+        "selector": selector, "timeout": timeout, "wait": wait,
+    }))
 
 
 # ===== Web UI commands =====

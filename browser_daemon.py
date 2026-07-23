@@ -11,6 +11,9 @@ browser — 浏览器常驻 TCP 服务 + CLI + 复合指令
   browser search_read <query> [--result N] [--chars N]
   browser diagnose | diagnose_and_recover | close_popups
   browser wait_text <text> | assert_text <text> | click_expect <text> --expect <text>
+  browser tabs | new_tab [url] | switch_tab <id> | close_tab [id]
+  browser wait_selector <css> | wait_url <pattern> | scroll_into_view <css>
+  browser click_role <role> [--name n] | click_label <label> | click_css <css>
   browser workflow_list|workflow_show|workflow_run|workflow_validate
   browser config_show|config_set|config_web|preset_list
   browser trace_list|trace_show <run_id>
@@ -721,7 +724,10 @@ def main():
     from tools.cli_dispatch import dispatch as _dispatch
     from tools.cli_dispatch import _ensure_trace as _ensure
     from tools.render import render_text as _render
-    wf_handled = {"workflow_list", "workflow_show", "workflow_run", "trace_list", "trace_show", "read_urls_parallel"}
+    wf_handled = {"workflow_list", "workflow_show", "workflow_run", "trace_list", "trace_show", "read_urls_parallel",
+                  "tabs", "new_tab", "switch_tab", "close_tab",
+                  "wait_selector", "wait_url", "scroll_into_view",
+                  "click_role", "click_label", "click_css"}
     if args[0] in wf_handled:
         result = _ensure(_dispatch(args), args[0])
         print(_render(result))
