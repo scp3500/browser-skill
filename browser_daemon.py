@@ -2,19 +2,18 @@
 """
 browser — 浏览器常驻 TCP 服务 + CLI + 复合指令
 
-用法:
+用法（常用）:
+  browser status|kill|restart|logs
   browser goto <url>
-  browser click <id>
-  browser fill <id> <text>
-  browser type_enter <id> <text>      # fill + Enter + observe
-  browser search_current <id> <query> # fill + Enter + observe
-  browser wiki <query>               # 直接搜 Wikipedia
-  browser read [max_chars]           # 提取正文
-  browser page                       # 当前页概览
-  browser status                     # daemon 状态
-  browser kill                       # 杀 daemon
-  browser restart                    # 重启 daemon
-  browser logs                       # 查看日志
+  browser click <id> | click_text <text> | fill <id> <text> | press [key]
+  browser observe | screenshot [path] | read [--chars N]
+  browser read_url <url> [--provider auto|browser|dokobot] [--chars N]
+  browser search_read <query> [--result N] [--chars N]
+  browser diagnose | diagnose_and_recover | close_popups
+  browser wait_text <text> | assert_text <text> | click_expect <text> --expect <text>
+  browser workflow_list|workflow_show|workflow_run|workflow_validate
+  browser config_show|config_set|config_web|preset_list
+  browser trace_list|trace_show <run_id>
 """
 
 import sys, os, json, socket, time, threading, subprocess, re, atexit
@@ -53,7 +52,7 @@ def _cleanup_screenshots(screenshot_dir=None):
     for f in files:
         if datetime.fromtimestamp(f.stat().st_mtime) < cutoff:
             try: f.unlink()
-            except: pass
+            except OSError: pass
     # Enforce max files
     files = sorted(sdir.glob("browser_*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
     for f in files[_SCREENSHOT_MAX_FILES:]:
@@ -65,13 +64,6 @@ def _cleanup_screenshots(screenshot_dir=None):
 
 RUNS_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / ".pi")) / "Pi" / "browser" / "runs"
 RUNS_DIR.mkdir(parents=True, exist_ok=True)
-
-def _sanitize_run_id_part(s: str) -> str:
-    """Extract command name from arg, strip URL/params/selectors"""
-    name = str(s).strip().split()[0] if str(s).strip() else "unknown"
-    import re
-    name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
-    return name[:64]
 
 def _sanitize_run_id_part(s: str) -> str:
     """替换非法 Windows 路径字符，确保 run_id 安全"""
@@ -618,470 +610,17 @@ def _cmd_trace_show(run_id):
 
     return
 
-    # 管理命令
-    if args[0] == "--serve": serve(); return
-
-    if args[0] == "status":
-        s = _connect()
-        if s:
-            s.sendall(b'{"type":"ping"}\n')
-            r = s.makefile("r", encoding="utf-8").readline()
-            s.close()
-            pid = PID_PATH.read_text(encoding="utf-8").strip() if PID_PATH.exists() else "?"
-            print(f"daemon running (pid {pid})")
-        else:
-            print("daemon not running")
-        return
-
-    if args[0] == "kill":
-        s = _connect()
-        if s:
-            s.sendall(b'{"type":"kill"}\n'); s.close()
-            time.sleep(0.5)
-        try:
-            if PID_PATH.exists():
-                pid = int(PID_PATH.read_text().strip())
-                os.kill(pid, 9)
-        except: pass
-        PID_PATH.unlink(missing_ok=True)
-        print("daemon killed")
-        return
-
-    if args[0] == "restart":
-        s = _connect()
-        if s:
-            s.sendall(b'{"type":"kill"}\n'); s.close()
-        time.sleep(0.5)
-        if _start_daemon():
-            print("daemon restarted")
-        else:
-            print("restart failed")
-        return
-
-    if args[0] == "logs":
-        if LOG_PATH.exists():
-            lines = LOG_PATH.read_text(encoding="utf-8").splitlines()
-            print("\n".join(lines[-80:]))
-        else:
-            print("no logs")
-        return
-
-    if args[0] == "trace":
-        s = _connect()
-        if not s: print("daemon not running"); return
-        s.sendall(b'{"type":"trace"}\n')
-        f = s.makefile("r", encoding="utf-8")
-        print(f.readline() or "empty"); s.close()
-        return
-
-    # v2.4 config commands
-    if args[0] == "config_path":
-        from tools.config import get_user_config_path
-        print(get_user_config_path())
-        return
-
-    if args[0] == "config_show":
-        from tools.config import load_effective
-        import json
-        cfg = load_effective()
-        is_json = "--json" in args[1:]
-        if is_json:
-            print(json.dumps(cfg, indent=2, ensure_ascii=False))
-        else:
-            import yaml
-            s = yaml.dump(cfg, default_flow_style=False, allow_unicode=True)
-            print(s.strip())
-        return
-
-    if args[0] == "config_validate":
-        from tools.workflow_result import WorkflowResult
-        from tools.config import load_effective, validate
-        cfg = load_effective()
-        ok, errors = validate(cfg)
-        if ok:
-            wr = WorkflowResult(status="ok", error_code="ok", provider_used="none")
-            print(chr(10).join([wr.cli_header(), "Trace: no", "", "Config is valid"]))
-        else:
-            wr = WorkflowResult(status="error", error_code="invalid_config", provider_used="none")
-            print(chr(10).join([wr.cli_header(), "Trace: no", "", "Message: " + errors[0]]))
-        return
-
-    if args[0] == "config_set":
-        from tools.config import USER_CONFIG_FILE, _deep_merge, load_user_config, load_defaults
-        import yaml
-        if len(args) < 2 or "=" not in args[1]:
-            print("Usage: browser config_set key=value"); return
-        kv = args[1].split("=", 1)
-        keys = kv[0].split(".")
-        val = kv[1]
-        try: val = int(val)
-        except ValueError:
-            if val.lower() in ("true", "yes"): val = True
-            elif val.lower() in ("false", "no"): val = False
-        old = load_user_config()
-        d = old
-        for k in keys[:-1]:
-            d = d.setdefault(k, {})
-        d[keys[-1]] = val
-        USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-        with open(USER_CONFIG_FILE, "w", encoding="utf-8") as f:
-            yaml.dump(old, f, default_flow_style=False, allow_unicode=True)
-        print(f"{kv[0]} = {val}")
-        return
-
-    if args[0] == "preset_list":
-        from tools.config import get_presets
-        for name in get_presets():
-            print(f"  {name}")
-        return
-
-    if args[0] == "preset_show":
-        from tools.config import load_preset
-        import yaml
-        name = args[1] if len(args) > 1 else ""
-        if not name:
-            print("Usage: browser preset_show <name>"); return
-        p = load_preset(name)
-        if p is None:
-            print(f"preset not found: {name}")
-            return
-        s = yaml.dump(p, default_flow_style=False, allow_unicode=True)
-        print(s.strip())
-        return
-
-    if args[0] == "preset_use":
-        from tools.config import load_preset, USER_CONFIG_FILE
-        import shutil, yaml
-        name = args[1] if len(args) > 1 else ""
-        if not name:
-            print("Usage: browser preset_use <name> [--dry-run|--write]"); return
-        p = load_preset(name)
-        if p is None:
-            print(f"preset not found: {name}")
-            return
-        is_write = "--write" in args[2:]
-        is_dry_run = "--dry-run" in args[2:] or not is_write
-        if is_dry_run:
-            import yaml
-            print("Would write:")
-            print(yaml.dump(p, default_flow_style=False, allow_unicode=True).strip())
-            print("To: " + str(USER_CONFIG_FILE))
-            return
-        if is_write:
-            USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(USER_CONFIG_FILE, "w", encoding="utf-8") as f:
-                yaml.dump(p, f, default_flow_style=False, allow_unicode=True)
-            print(f"preset applied: {name}")
-            print("To: " + str(USER_CONFIG_FILE))
-        return
-
-    if args[0] == "workflow_validate":
-        from tools.workflow_result import WorkflowResult
-        from tools.workflow_runner import load_spec
-        from tools.config import validate_workflow_spec
-        name = args[1] if len(args) > 1 else ""
-        if not name:
-            print("Usage: browser workflow_validate <name>"); return
-        spec = load_spec(name)
-        if spec is None:
-            wr = WorkflowResult(status="error", error_code="not_found", provider_used="none", message=f"workflow not found: {name}")
-            print(chr(10).join([wr.cli_header(), "", wr.message or ""]))
-            return
-        ok, errors = validate_workflow_spec(spec)
-        if ok:
-            wr = WorkflowResult(status="ok", error_code="ok", provider_used="none")
-            print(chr(10).join([wr.cli_header(), "Trace: no", "", "Workflow spec is valid"]))
-        else:
-            wr = WorkflowResult(status="error", error_code="invalid_config", provider_used="none", message=errors[0])
-            print(chr(10).join([wr.cli_header(), "Trace: no", "", "Message: " + errors[0]]))
-        return
-
-    # v2.3 workflow commands
-    if args[0] == "workflow_list":
-        from tools.workflow_runner import list_workflows, load_spec
-        specs = []
-        for name in list_workflows():
-            spec = load_spec(name)
-            desc = (spec.get("description","").split('.')[0][:60] if spec else "")
-            inputs = ", ".join(i.get("name","") for i in (spec.get("inputs",[]) if spec else []))
-            ex = f"browser workflow_run {name}"
-            if inputs: ex += f" --var {inputs.split(',')[0].strip()}=..."
-            print(f"  {name}")
-            print(f"    Purpose: {desc}")
-            if inputs: print(f"    Inputs: {inputs}")
-            print(f"    Example: {ex}")
-            print()
-        return
-    if args[0] == "workflow_show":
-        from tools.workflow_runner import show_workflow, load_spec, list_workflows
-        name = args[1] if len(args) > 1 else ""
-        if name not in list_workflows():
-            print(f"Status: error")
-            print(f"Error code: not_found")
-            print(f"Message: workflow not found: {name}")
-            return
-        content = show_workflow(name)
-        if content:
-            print(content)
-        spec = load_spec(name)
-        if spec:
-            print("---")
-            print(f"Name: {spec.get('name','?')}")
-            print(f"Description: {spec.get('description','?')}")
-            inputs = spec.get("inputs", [])
-            if inputs:
-                print(f"Required inputs: {', '.join(i.get('name','?') for i in inputs if i.get('required',True))}")
-            print("Steps: " + str(len(spec.get('steps',[]))))
-            ex_inputs = ", ".join(i.get("name","?")+"=..." for i in inputs[:2])
-            print(f"Example: browser workflow_run {name} --var {ex_inputs}" if ex_inputs else f"Example: browser workflow_run {name}")
-        return
-    if args[0] == "workflow_run":
-        name = args[1] if len(args) > 1 else ""
-        rest = args[2:]
-        inputs = {}
-        i = 0
-        while i < len(rest):
-            if rest[i] == "--input" or rest[i] == "-i":
-                import json
-                try:
-                    fp = rest[i+1] if i+1 < len(rest) else ""
-                    with open(fp, "r", encoding="utf-8") as f:
-                        inputs = json.load(f)
-                except Exception as e:
-                    print(f"read input failed: {e}")
-                    return
-                i += 2; continue
-            if rest[i] == "--var" or rest[i] == "-v":
-                if i+1 < len(rest) and "=" in rest[i+1]:
-                    k, v = rest[i+1].split("=", 1)
-                    inputs[k] = v
-                i += 2; continue
-            i += 1
-        from tools.workflow_runner import run as run_workflow
-        result = run_workflow(name, inputs)
-        wr = result.get("_wr")
-        tid = result.get("trace_id", "")
-        msg = result.get("observation", "")
-        if isinstance(wr, dict):
-            s = wr.get("status","?")
-            ec = wr.get("error_code","?")
-            pu = wr.get("provider_used","?")
-            fb = wr.get("fallback_used",False)
-            print(f"Status: {s}")
-            print(f"Error code: {ec}")
-            print(f"Provider used: {pu}")
-            print(f"Fallback used: {'yes' if fb else 'no'}")
-            if tid: print(f"Trace: {tid}")
-        elif wr:
-            s = wr.status if hasattr(wr,"status") else "?"
-            ec = wr.error_code if hasattr(wr,"error_code") else "?"
-            pu = wr.provider_used if hasattr(wr,"provider_used") else "?"
-            fb = wr.fallback_used if hasattr(wr,"fallback_used") else False
-            print(f"Status: {s}")
-            print(f"Error code: {ec}")
-            print(f"Provider used: {pu}")
-            print(f"Fallback used: {'yes' if fb else 'no'}")
-            if tid: print(f"Trace: {tid}")
-        if msg:
-            print()
-            if msg.startswith("missing required"):
-                print("Message: " + msg)
-            else:
-                print(msg)
-        return
-
-    # workflow 命令
-    rest = args[1:]
-    if args[0] == "read":
-        chars = "3000"
-        if rest:
-            if rest[0] == "--chars" and len(rest) > 1:
-                chars = rest[1]
-            else:
-                chars = _positional_or_default(rest, 0, "3000")
-        r = _send_workflow("read", {"chars": chars})
-        print_result(r); return
-    if args[0] == "open":
-        r = _send_workflow("open", {"url": rest[0] if rest else ""})
-        print_result(r); return
-    if args[0] == "current":
-        r = _send_workflow("current", {})
-        print_result(r); return
-    if args[0] == "article":
-        url = rest[0] if rest else ""
-        # support: article <url> --chars N  OR article <url> <chars>
-        mc = "3000"
-        if len(rest) > 1:
-            if rest[1] == "--chars" and len(rest) > 2:
-                mc = rest[2]
-            else:
-                mc = _positional_or_default(rest, 1, "3000")
-        r = _send_workflow("article", {"url": url, "chars": mc})
-        print_result(r); return
-    if args[0] == "search":
-        r = _send_workflow("search", {"query": " ".join(rest)})
-        print_result(r); return
-    if args[0] == "open_result":
-        n = rest[0] if rest else "1"
-        r = _send_workflow("open_result", {"result": n, "n": n})
-        print_result(r); return
-    if args[0] == "search_read":
-        result_n = 1; chars_n = 3000; query_parts = []
-        i = 0
-        while i < len(rest):
-            if rest[i] == "--result":
-                result_n = int(rest[i+1]) if i+1 < len(rest) else 1; i += 2; continue
-            if rest[i] == "--chars":
-                chars_n = int(rest[i+1]) if i+1 < len(rest) else 3000; i += 2; continue
-            query_parts.append(rest[i]); i += 1
-        r = _send_workflow("search_read", {"query": " ".join(query_parts), "result": result_n, "n": result_n, "chars": chars_n})
-        print_result(r); return
-    if args[0] == "wiki_read":
-        chars_n = 3000; query_parts = []
-        i = 0
-        while i < len(rest):
-            if rest[i] == "--chars":
-                chars_n = int(rest[i+1]) if i+1 < len(rest) else 3000; i += 2; continue
-            query_parts.append(rest[i]); i += 1
-        r = _send_workflow("wiki_read", {"query": " ".join(query_parts), "chars": chars_n})
-        print_result(r); return
-    if args[0] == "wiki_click_read":
-        click = ""; chars_n = 3000; query_parts = []
-        i = 0
-        while i < len(rest):
-            if rest[i] == "--click":
-                click = " ".join(rest[i+1:]); break
-            if rest[i] == "--chars":
-                chars_n = int(rest[i+1]) if i+1 < len(rest) else 3000; i += 2; continue
-            query_parts.append(rest[i]); i += 1
-        r = _send_workflow("wiki_click_read", {"query": " ".join(query_parts), "click": click, "chars": chars_n})
-        print_result(r); return
-    # new provider workflows
-    if args[0] == "doko_read":
-        url = rest[0] if rest else ""
-        chars = "3000"
-        if len(rest) > 1:
-            if rest[1] == "--chars" and len(rest) > 2:
-                chars = rest[2]
-            else:
-                chars = _positional_or_default(rest, 1, "3000")
-        r = _send_workflow("doko_read", {"url": url, "chars": chars})
-        print_result(r); return
-    if args[0] == "images":
-        url = rest[0] if rest else ""
-        r = _send_workflow("images", {"url": url})
-        print_result(r); return
-    if args[0] == "image_page":
-        url = rest[0] if rest else ""
-        limit = 3; describe = False; question = ""; i = 1
-        while i < len(rest):
-            if rest[i] == "--limit": limit = int(rest[i+1]) if i+1 < len(rest) else 3; i += 2; continue
-            if rest[i] == "--describe": describe = True; i += 1; continue
-            if rest[i] == "--question": question = " ".join(rest[i+1:]); break
-            i += 1
-        r = _send_workflow("image_page", {"url": url, "limit": limit, "describe": describe, "question": question})
-        print_result(r); return
-    if args[0] == "diagnose":
-        q = " ".join(rest) if rest else ""
-        r = _send_workflow("diagnose", {"question": q})
-        print_result(r); return
-    if args[0] == "ask_image":
-        img = rest[0] if rest else ""
-        q = ""; mode = "describe"; i = 1
-        while i < len(rest):
-            if rest[i] == "--mode": mode = rest[i+1] if i+1 < len(rest) else "describe"; check_mode("ask_image", mode); i += 2; continue
-            q += " " + rest[i]; i += 1
-        r = _send_workflow("ask_image", {"path": img, "question": q.strip(), "mode": mode})
-        print_result(r); return
-    if args[0] == "screenshot_ask":
-        q = ""; mode = "diagnose"; i = 0
-        while i < len(rest):
-            if rest[i] == "--mode": mode = rest[i+1] if i+1 < len(rest) else "diagnose"; check_mode("screenshot_ask", mode); i += 2; continue
-            q += " " + rest[i]; i += 1
-        r = _send_workflow("screenshot_ask", {"question": q.strip(), "mode": mode})
-        print_result(r); return
-    if args[0] == "visual_search_check":
-        q = " ".join(rest) if rest else ""
-        r = _send_workflow("visual_search_check", {"goal": q, "question": q})
-        print_result(r); return
-
-    # v2.2 workflow commands
-    rest = args[1:]
-    if args[0] == "read_url":
-        url = rest[0] if rest else ""
-        provider = "auto"; chars = "1000"; i = 1
-        while i < len(rest):
-            if rest[i] == "--provider": provider = rest[i+1] if i+1 < len(rest) else "auto"; i += 2; continue
-            if rest[i] == "--chars": chars = rest[i+1] if i+1 < len(rest) else "1000"; i += 2; continue
-            i += 1
-        r = _send_workflow("read_url", {"url": url, "provider": provider, "chars": chars})
-        print_result(r); return
-    if args[0] == "close_popups":
-        r = _send_workflow("close_popups", {})
-        print_result(r); return
-    if args[0] == "diagnose_and_recover":
-        r = _send_workflow("diagnose_and_recover", {})
-        print_result(r); return
-    if args[0] == "wait_text":
-        text = rest[0] if rest else ""
-        timeout = "10"; i = 1
-        while i < len(rest):
-            if rest[i] == "--timeout": timeout = rest[i+1] if i+1 < len(rest) else "10"; i += 2; continue
-            i += 1
-        r = _send_workflow("wait_text", {"text": text, "timeout": timeout})
-        print_result(r); return
-    if args[0] == "assert_text":
-        r = _send_workflow("assert_text", {"text": " ".join(rest)})
-        print_result(r); return
-    if args[0] == "click_expect":
-        click_text = ""; expect_text = ""; timeout = "10"; i = 0
-        while i < len(rest):
-            if rest[i] == "--expect": expect_text = " ".join(rest[i+1:]); break
-            if rest[i] == "--timeout": timeout = rest[i+1] if i+1 < len(rest) else "10"; i += 2; continue
-            click_text += " " + rest[i]; i += 1
-        r = _send_workflow("click_expect", {"click_text": click_text.strip(), "expect": expect_text, "timeout": timeout})
-        print_result(r); return
-    if args[0] == "trace_list":
-        _cmd_trace_list(); return
-    if args[0] == "trace_show":
-        run_id = rest[0] if rest else ""
-        _cmd_trace_show(run_id); return
-
-    # 复合指令
-    # 复合指令
-    if args[0] == "type_enter":
-        r = _send_recipe("type_enter", {"id": rest[0] if rest else "0", "text": " ".join(rest[1:])})
-        print_result(r); return
-    if args[0] == "search_current":
-        r = _send_recipe("search_current", {"id": rest[0] if rest else "0", "query": " ".join(rest[1:])})
-        print_result(r); return
-    if args[0] == "wiki":
-        # 解析 --click <text>
-        click = ""
-        query_parts = []
-        i = 0
-        while i < len(rest):
-            if rest[i] == "--click":
-                click = " ".join(rest[i+1:])
-                break
-            query_parts.append(rest[i])
-            i += 1
-        r = _send_recipe("wiki", {"query": " ".join(query_parts), "click": click})
-        print_result(r); return
-    if args[0] == "read":
-        mc = rest[0] if rest else "3000"
-        r = _send_recipe("read", {"max_chars": mc})
-        print_result(r); return
-    if args[0] == "page":
-        r = _send_recipe("page", {})
-        print_result(r); return
-
-    # 原子命令
-    parsed = _parse(args)
-    if not parsed: print(__doc__); sys.exit(1)
-    r = _send(*parsed)
-    print_result(r)
-
+def _positional_or_default(rest, index, default="3000"):
+    """Return rest[index] only if it is a real value, not a CLI flag like --chars."""
+    if len(rest) <= index:
+        return default
+    val = rest[index]
+    if val is None:
+        return default
+    s = str(val).strip()
+    if not s or s.startswith("--"):
+        return default
+    return s
 
 def _parse(args):
     if not args: return None
@@ -1107,22 +646,6 @@ def _parse(args):
     if c == "scroll":
         return ("browser", "scroll", {"y": int(r[0]) if r else 300})
     return None
-
-
-atexit.register(_write_final_trace)
-
-def _positional_or_default(rest, index, default="3000"):
-    """Return rest[index] only if it is a real value, not a CLI flag like --chars."""
-    if len(rest) <= index:
-        return default
-    val = rest[index]
-    if val is None:
-        return default
-    s = str(val).strip()
-    if not s or s.startswith("--"):
-        return default
-    return s
-
 
 def main():
     args = sys.argv[1:]
@@ -1492,33 +1015,6 @@ def main():
         if any(kw in err.lower() for kw in ["navigation", "timeout", "goto"]):
             _send("browser", "reset", {})
     print_result(r)
-
-
-def _parse(args):
-    if not args: return None
-    c, r = args[0], args[1:]
-    if c == "reset":
-        return ("browser", "reset", {})
-    if c == "close":
-        return ("browser", "close", {})
-    if c == "goto":
-        return ("browser", "goto", {"url": r[0] if r else ""})
-    if c == "click":
-        return ("browser", "click_id", {"id": int(r[0]) if r else 0})
-    if c == "fill":
-        return ("browser", "fill_id", {"id": int(r[0]) if r else 0, "text": " ".join(r[1:])})
-    if c == "press":
-        return ("browser", "press", {"key": r[0] if r else "Enter"})
-    if c == "click_text":
-        return ("browser", "click_text", {"text": " ".join(r)})
-    if c == "observe":
-        return ("browser", "observe", {"snapshot": True, "text": True})
-    if c == "screenshot":
-        return ("browser", "screenshot", {"path": r[0] if r else "/tmp/browser_screenshot.png"})
-    if c == "scroll":
-        return ("browser", "scroll", {"y": int(r[0]) if r else 300})
-    return None
-
 
 atexit.register(_write_final_trace)
 
