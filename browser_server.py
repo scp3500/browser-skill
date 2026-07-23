@@ -134,6 +134,15 @@ def _target(page):
 
 
 
+def _ms(args, key="timeout", default=10000):
+    """Coerce timeout-like args to int milliseconds (CLI often sends strings)."""
+    raw = args.get(key, default) if isinstance(args, dict) else default
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        return int(default)
+
+
 def ensure_page():
     global P, BROWSER, CONTEXT, PAGE, TABS, ACTIVE_ID, PERSISTENT
     if BROWSER is None and CONTEXT is None:
@@ -180,7 +189,7 @@ def ensure_page():
 
 
 def _smart_click(page, locator, args):
-    timeout = int(args.get("timeout", 10000))
+    timeout = _ms(args)
     try:
         locator.wait_for(state="visible", timeout=timeout)
     except Exception:
@@ -251,13 +260,13 @@ def handle(req):
         target = _target(page)
         if cmd == "goto":
             url = args["url"]
-            page.goto(url, timeout=args.get("timeout", 30000))
+            page.goto(url, timeout=_ms(args, default=30000))
             _wait_stable(page)
             ok(req_id, {"url": page.url, "title": page.title()})
 
         elif cmd == "click":
             sel = args["selector"]
-            timeout = args.get("timeout", 10000)
+            timeout = _ms(args)
             # wait defaults False so click_id path stays stable
             if args.get("wait"):
                 target.wait_for_selector(sel, state="visible", timeout=timeout)
@@ -267,7 +276,7 @@ def handle(req):
 
         elif cmd == "click_text":
             text = args.get("text", args.get("args", ""))
-            page.get_by_text(text, exact=args.get("exact", False)).first.click(timeout=args.get("timeout", 10000))
+            page.get_by_text(text, exact=args.get("exact", False)).first.click(timeout=_ms(args))
             _wait_stable(page)
             ok(req_id, {"url": page.url})
 
@@ -279,7 +288,7 @@ def handle(req):
                 fail(req_id, "NotFound", f"element id={click_id} not found", cmd)
                 return
             sel = target["selector"]
-            page.click(sel, timeout=args.get("timeout", 10000))
+            page.click(sel, timeout=_ms(args))
             _wait_stable(page)
             ok(req_id, {"url": page.url, "element": target})
 
@@ -340,7 +349,7 @@ def handle(req):
         elif cmd == "wait_for_selector":
             sel = args["selector"]
             state = args.get("state", "visible")
-            page.wait_for_selector(sel, state=state, timeout=args.get("timeout", 10000))
+            page.wait_for_selector(sel, state=state, timeout=_ms(args))
             ok(req_id, {"selector": sel, "state": state})
 
         elif cmd == "hover":
@@ -438,7 +447,7 @@ def handle(req):
             _sync_page()
             url = args.get("url") or ""
             if url:
-                np.goto(url, timeout=args.get("timeout", 30000))
+                np.goto(url, timeout=_ms(args, default=30000))
                 _wait_stable(np)
             info = _tab_info(tid, np)
             info["tab_id"] = tid
@@ -483,13 +492,13 @@ def handle(req):
             state = args.get("state", "visible")
             if state not in ("visible", "attached", "hidden", "detached"):
                 fail(req_id, "InputError", f"invalid state: {state}", cmd); return
-            timeout = int(args.get("timeout", 10000))
+            timeout = _ms(args)
             target.wait_for_selector(sel, state=state, timeout=timeout)
             ok(req_id, {"selector": sel, "state": state})
 
         elif cmd == "wait_url":
             pattern = args.get("pattern", "")
-            timeout = int(args.get("timeout", 10000))
+            timeout = _ms(args)
             exact = bool(args.get("exact", False))
             if exact:
                 page.wait_for_url(lambda u: u == pattern, timeout=timeout)
@@ -499,7 +508,7 @@ def handle(req):
 
         elif cmd == "scroll_into_view":
             sel = args.get("selector", "")
-            timeout = int(args.get("timeout", 10000))
+            timeout = _ms(args)
             el = target.wait_for_selector(sel, state="visible", timeout=timeout)
             el.scroll_into_view_if_needed(timeout=timeout)
             box = el.bounding_box()
@@ -540,7 +549,7 @@ def handle(req):
             # Click something (or wait) and save the next download
             sel = args.get("selector") or args.get("click") or ""
             out = args.get("path") or args.get("save_as") or ""
-            timeout = int(args.get("timeout", 30000))
+            timeout = _ms(args, default=30000)
             ddir = _download_dir()
             try:
                 with page.expect_download(timeout=timeout) as di:

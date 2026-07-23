@@ -34,7 +34,7 @@ def test_download_optional_selector():
         m.return_value = {"ok": True, "observation": "ok"}
         run_download(selector="#dl", path="out.bin", timeout="15000")
         m.assert_called_once_with("download", {
-            "timeout": "15000", "selector": "#dl", "path": "out.bin",
+            "timeout": 15000, "selector": "#dl", "path": "out.bin",
         })
 
 

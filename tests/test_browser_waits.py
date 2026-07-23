@@ -15,7 +15,7 @@ def test_wait_selector_passes_state_default():
         m.return_value = {"ok": True, "observation": "ok"}
         run_wait_selector("#x")
         m.assert_called_once_with("wait_selector", {
-            "selector": "#x", "state": "visible", "timeout": "10000",
+            "selector": "#x", "state": "visible", "timeout": 10000,
         })
 
 

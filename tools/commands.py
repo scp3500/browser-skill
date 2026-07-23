@@ -322,6 +322,13 @@ def run_trace_show(run_id: str) -> BrowserResult:
 
 # ===== Action commands (daemon-mediated) =====
 
+def _timeout_arg(v, default=10000):
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return int(default)
+
+
 def _send_cmd(cmd: str, args: dict = None) -> dict:
     """Send command to daemon and get response dict"""
     import socket, json
@@ -449,7 +456,7 @@ def run_wait_selector(selector: str, state: str = "visible", timeout: str = "100
         return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
                              message="wait_selector requires selector")
     return _result_from_daemon(_send_cmd("wait_selector", {
-        "selector": selector, "state": state, "timeout": timeout,
+        "selector": selector, "state": state, "timeout": _timeout_arg(timeout),
     }))
 
 
@@ -458,7 +465,7 @@ def run_wait_url(pattern: str, timeout: str = "10000", exact: bool = False) -> B
         return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
                              message="wait_url requires pattern")
     return _result_from_daemon(_send_cmd("wait_url", {
-        "pattern": pattern, "timeout": timeout, "exact": exact,
+        "pattern": pattern, "timeout": _timeout_arg(timeout), "exact": exact,
     }))
 
 
@@ -467,7 +474,7 @@ def run_scroll_into_view(selector: str, timeout: str = "10000") -> BrowserResult
         return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
                              message="scroll_into_view requires selector")
     return _result_from_daemon(_send_cmd("scroll_into_view", {
-        "selector": selector, "timeout": timeout,
+        "selector": selector, "timeout": _timeout_arg(timeout),
     }))
 
 
@@ -476,7 +483,7 @@ def run_click_role(role: str, name: str = "", exact: bool = False, timeout: str 
         return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
                              message="click_role requires role")
     return _result_from_daemon(_send_cmd("click_role", {
-        "role": role, "name": name, "exact": exact, "timeout": timeout,
+        "role": role, "name": name, "exact": exact, "timeout": _timeout_arg(timeout),
     }))
 
 
@@ -485,7 +492,7 @@ def run_click_label(label: str, exact: bool = False, timeout: str = "10000") -> 
         return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
                              message="click_label requires label")
     return _result_from_daemon(_send_cmd("click_label", {
-        "label": label, "exact": exact, "timeout": timeout,
+        "label": label, "exact": exact, "timeout": _timeout_arg(timeout),
     }))
 
 
@@ -494,7 +501,7 @@ def run_click_css(selector: str, timeout: str = "10000", wait: bool = True) -> B
         return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
                              message="click_css requires selector")
     return _result_from_daemon(_send_cmd("click", {
-        "selector": selector, "timeout": timeout, "wait": wait,
+        "selector": selector, "timeout": _timeout_arg(timeout), "wait": wait,
     }))
 
 
@@ -506,7 +513,7 @@ def run_upload(selector: str, files: str) -> BrowserResult:
 
 
 def run_download(selector: str = "", path: str = "", timeout: str = "30000") -> BrowserResult:
-    args = {"timeout": timeout}
+    args = {"timeout": _timeout_arg(timeout, 30000)}
     if selector:
         args["selector"] = selector
     if path:

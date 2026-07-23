@@ -15,7 +15,7 @@ def test_click_role_args_shape():
         m.return_value = {"ok": True, "observation": "ok"}
         run_click_role("button", name="登录")
         m.assert_called_once_with("click_role", {
-            "role": "button", "name": "登录", "exact": False, "timeout": "10000",
+            "role": "button", "name": "登录", "exact": False, "timeout": 10000,
         })
 
 
@@ -24,7 +24,7 @@ def test_click_label_args_shape():
         m.return_value = {"ok": True, "observation": "ok"}
         run_click_label("密码")
         m.assert_called_once_with("click_label", {
-            "label": "密码", "exact": False, "timeout": "10000",
+            "label": "密码", "exact": False, "timeout": 10000,
         })
 
 
