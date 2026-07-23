@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""web_app.py — v2.6.0 Web UI 控制面板（stdlib http.server，零依赖）"""
+"""web_app.py — v2.7.0 Web UI 控制面板（stdlib http.server，零依赖）"""
 import os, sys, json, html, secrets, urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
@@ -21,7 +21,7 @@ except ImportError:
 
 
 _TOKEN = secrets.token_hex(16)
-_VERSION = "v2.6.0"
+_VERSION = "v2.7.0"
 
 
 # ===== HTML templates (inline, 零模板引擎) =====

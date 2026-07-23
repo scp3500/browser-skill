@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""commands.py — v2.6.0 统一命令实现。所有函数返回 BrowserResult"""
+"""commands.py — v2.7.0 统一命令实现。所有函数返回 BrowserResult"""
 import os, sys, json, yaml, time
 from pathlib import Path
 
@@ -496,6 +496,46 @@ def run_click_css(selector: str, timeout: str = "10000", wait: bool = True) -> B
     return _result_from_daemon(_send_cmd("click", {
         "selector": selector, "timeout": timeout, "wait": wait,
     }))
+
+
+def run_upload(selector: str, files: str) -> BrowserResult:
+    if not selector or not files:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="upload requires selector and file path")
+    return _result_from_daemon(_send_cmd("upload", {"selector": selector, "files": files}))
+
+
+def run_download(selector: str = "", path: str = "", timeout: str = "30000") -> BrowserResult:
+    args = {"timeout": timeout}
+    if selector:
+        args["selector"] = selector
+    if path:
+        args["path"] = path
+    return _result_from_daemon(_send_cmd("download", args))
+
+
+def run_frame_enter(selector: str) -> BrowserResult:
+    if not selector:
+        return BrowserResult(status="error", error_code="invalid_input", provider_used="none",
+                             message="frame_enter requires selector")
+    return _result_from_daemon(_send_cmd("frame_enter", {"selector": selector}))
+
+
+def run_frame_exit() -> BrowserResult:
+    return _result_from_daemon(_send_cmd("frame_exit"))
+
+
+def run_frame_main() -> BrowserResult:
+    return _result_from_daemon(_send_cmd("frame_main"))
+
+
+def run_frame_status() -> BrowserResult:
+    return _result_from_daemon(_send_cmd("frame_status"))
+
+
+def run_profile_status() -> BrowserResult:
+    return _result_from_daemon(_send_cmd("profile_status"))
+
 
 
 # ===== Web UI commands =====

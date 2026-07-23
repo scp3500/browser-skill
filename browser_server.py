@@ -37,6 +37,10 @@ PAGE = None  # always mirrors TABS[ACTIVE_ID]
 TABS = {}
 ACTIVE_ID = "0"
 _TAB_SEQ = 0
+CONTEXT = None          # BrowserContext when using persistent profile
+PERSISTENT = False
+FRAMES = {}             # tab_id -> list of frame selectors (outer→inner)
+DOWNLOAD_DIR = None
 
 
 def log(*args):
@@ -77,25 +81,98 @@ def _tab_info(tid, page):
     return {"id": tid, "url": url, "title": title}
 
 
+
+def _profile_dir():
+    """Optional persistent profile from env (empty = ephemeral)."""
+    d = (os.environ.get("BROWSER_PROFILE_DIR")
+         or os.environ.get("BROWSER_USER_DATA_DIR")
+         or "").strip()
+    return d or None
+
+
+def _download_dir():
+    global DOWNLOAD_DIR
+    if DOWNLOAD_DIR:
+        return Path(DOWNLOAD_DIR)
+    d = (os.environ.get("BROWSER_DOWNLOAD_DIR") or "").strip()
+    if d:
+        p = Path(d)
+    else:
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / ".pi")) / "Pi" / "browser" / "downloads"
+        p = base
+    p.mkdir(parents=True, exist_ok=True)
+    DOWNLOAD_DIR = str(p)
+    return p
+
+
+def _new_page():
+    """Create a page on the active browser/context."""
+    if PERSISTENT:
+        return CONTEXT.new_page()
+    return BROWSER.new_page()
+
+
+def _target(page):
+    """Resolve frame chain for current tab; returns Page or Frame."""
+    chain = FRAMES.get(ACTIVE_ID) or []
+    cur = page
+    for sel in chain:
+        # Prefer element content_frame (works for Page and Frame).
+        handle = cur.query_selector(sel)
+        if handle is None:
+            # Optional Playwright fallback when available
+            fl = getattr(cur, "frame_locator", None)
+            if fl is None:
+                raise RuntimeError(f"frame selector not found: {sel}")
+            cur = fl(sel).first
+            continue
+        fr = handle.content_frame()
+        if fr is None:
+            raise RuntimeError(f"not a frame element: {sel}")
+        cur = fr
+    return cur
+
+
+
 def ensure_page():
-    global P, BROWSER, PAGE, TABS, ACTIVE_ID
-    if BROWSER is None:
+    global P, BROWSER, CONTEXT, PAGE, TABS, ACTIVE_ID, PERSISTENT
+    if BROWSER is None and CONTEXT is None:
         P = sync_playwright().start()
-        BROWSER = P.chromium.launch(headless=True, args=[
+        profile = _profile_dir()
+        launch_args = [
             '--disable-blink-features=AutomationControlled',
             '--no-sandbox',
-        ])
-        page = BROWSER.new_page()
-        _apply_init(page)
+        ]
+        if profile:
+            Path(profile).mkdir(parents=True, exist_ok=True)
+            PERSISTENT = True
+            CONTEXT = P.chromium.launch_persistent_context(
+                user_data_dir=profile,
+                headless=True,
+                accept_downloads=True,
+                args=launch_args,
+            )
+            BROWSER = CONTEXT  # so callers can still check truthiness
+            pages = list(CONTEXT.pages)
+            page = pages[0] if pages else CONTEXT.new_page()
+            _apply_init(page)
+        else:
+            PERSISTENT = False
+            BROWSER = P.chromium.launch(headless=True, args=launch_args)
+            CONTEXT = None
+            page = BROWSER.new_page()
+            _apply_init(page)
         TABS = {"0": page}
         ACTIVE_ID = "0"
+        FRAMES["0"] = []
         PAGE = page
     elif not TABS or ACTIVE_ID not in TABS:
-        page = BROWSER.new_page()
+        page = _new_page()
         _apply_init(page)
         tid = ACTIVE_ID if ACTIVE_ID else "0"
         TABS[tid] = page
         ACTIVE_ID = tid
+        FRAMES.setdefault(tid, [])
         PAGE = page
     else:
         PAGE = TABS[ACTIVE_ID]
@@ -137,7 +214,7 @@ def new_page_for_url(url, chars=3000, timeout_ms=30000):
     import traceback as _tb
     try:
         ensure_page()
-        np = BROWSER.new_page()
+        np = _new_page()
         try:
             np.set_viewport_size({"width": 1280, "height": 720})
             np.goto(url, timeout=int(timeout_ms))
@@ -159,7 +236,7 @@ def new_page_for_url(url, chars=3000, timeout_ms=30000):
         raise
 
 def handle(req):
-    global ACTIVE_ID, TABS, PAGE, P, BROWSER
+    global ACTIVE_ID, TABS, PAGE, P, BROWSER, CONTEXT, PERSISTENT, FRAMES, DOWNLOAD_DIR
     cmd = req.get("cmd", "")
     args = req.get("args", {})
     req_id = req.get("id", "")
@@ -171,6 +248,7 @@ def handle(req):
         return
 
     try:
+        target = _target(page)
         if cmd == "goto":
             url = args["url"]
             page.goto(url, timeout=args.get("timeout", 30000))
@@ -182,8 +260,8 @@ def handle(req):
             timeout = args.get("timeout", 10000)
             # wait defaults False so click_id path stays stable
             if args.get("wait"):
-                page.wait_for_selector(sel, state="visible", timeout=timeout)
-            page.click(sel, timeout=timeout)
+                target.wait_for_selector(sel, state="visible", timeout=timeout)
+            target.click(sel, timeout=timeout)
             _wait_stable(page)
             ok(req_id, {"url": page.url})
 
@@ -352,9 +430,10 @@ def handle(req):
             tid = args.get("id") or _next_tab_id()
             if tid in TABS:
                 fail(req_id, "InputError", f"tab id already exists: {tid}", cmd); return
-            np = BROWSER.new_page()
+            np = _new_page()
             _apply_init(np)
             TABS[tid] = np
+            FRAMES[tid] = []
             ACTIVE_ID = tid
             _sync_page()
             url = args.get("url") or ""
@@ -386,11 +465,13 @@ def handle(req):
             except Exception:
                 pass
             del TABS[tid]
+            FRAMES.pop(tid, None)
             if not TABS:
-                page0 = BROWSER.new_page()
+                page0 = _new_page()
                 _apply_init(page0)
                 TABS["0"] = page0
                 ACTIVE_ID = "0"
+                FRAMES["0"] = []
             elif ACTIVE_ID == tid:
                 ACTIVE_ID = next(iter(TABS.keys()))
             _sync_page()
@@ -403,7 +484,7 @@ def handle(req):
             if state not in ("visible", "attached", "hidden", "detached"):
                 fail(req_id, "InputError", f"invalid state: {state}", cmd); return
             timeout = int(args.get("timeout", 10000))
-            page.wait_for_selector(sel, state=state, timeout=timeout)
+            target.wait_for_selector(sel, state=state, timeout=timeout)
             ok(req_id, {"selector": sel, "state": state})
 
         elif cmd == "wait_url":
@@ -419,7 +500,7 @@ def handle(req):
         elif cmd == "scroll_into_view":
             sel = args.get("selector", "")
             timeout = int(args.get("timeout", 10000))
-            el = page.wait_for_selector(sel, state="visible", timeout=timeout)
+            el = target.wait_for_selector(sel, state="visible", timeout=timeout)
             el.scroll_into_view_if_needed(timeout=timeout)
             box = el.bounding_box()
             ok(req_id, {"selector": sel, "bbox": box})
@@ -431,18 +512,92 @@ def handle(req):
             kwargs = {"exact": exact}
             if name:
                 kwargs["name"] = name
-            loc = page.get_by_role(role, **kwargs).first
+            loc = target.get_by_role(role, **kwargs).first
             _smart_click(page, loc, args)
             ok(req_id, {"url": page.url, "role": role, "name": name or ""})
 
         elif cmd == "click_label":
             label = args.get("label", "")
             exact = bool(args.get("exact", False))
-            loc = page.get_by_label(label, exact=exact).first
+            loc = target.get_by_label(label, exact=exact).first
             _smart_click(page, loc, args)
             ok(req_id, {"url": page.url, "label": label})
 
+        elif cmd == "upload":
+            sel = args.get("selector", "")
+            files = args.get("files") or args.get("path") or args.get("file") or ""
+            if isinstance(files, str):
+                files = [f.strip() for f in files.split(";") if f.strip()] if ";" in files else ([files] if files else [])
+            if not sel or not files:
+                fail(req_id, "InputError", "upload requires selector and file path(s)", cmd); return
+            for f in files:
+                if not Path(f).exists():
+                    fail(req_id, "InputError", f"file not found: {f}", cmd); return
+            target.set_input_files(sel, files if len(files) > 1 else files[0])
+            ok(req_id, {"selector": sel, "files": files})
+
+        elif cmd == "download":
+            # Click something (or wait) and save the next download
+            sel = args.get("selector") or args.get("click") or ""
+            out = args.get("path") or args.get("save_as") or ""
+            timeout = int(args.get("timeout", 30000))
+            ddir = _download_dir()
+            try:
+                with page.expect_download(timeout=timeout) as di:
+                    if sel:
+                        target.click(sel, timeout=min(timeout, 10000))
+                    # if no selector, caller already triggered download
+                download = di.value
+                suggested = download.suggested_filename or "download.bin"
+                dest = Path(out) if out else (ddir / suggested)
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                download.save_as(str(dest))
+                ok(req_id, {
+                    "path": str(dest),
+                    "suggested_filename": suggested,
+                    "url": download.url,
+                })
+            except Exception as ex:
+                fail(req_id, type(ex).__name__, str(ex), cmd)
+
+        elif cmd == "frame_enter":
+            sel = args.get("selector", "")
+            if not sel:
+                fail(req_id, "InputError", "frame_enter requires selector", cmd); return
+            # validate frame exists on current target
+            handle = target.query_selector(sel)
+            if handle is None:
+                fail(req_id, "NotFound", f"frame selector not found: {sel}", cmd); return
+            if handle.content_frame() is None:
+                fail(req_id, "InputError", f"element is not a frame: {sel}", cmd); return
+            chain = list(FRAMES.get(ACTIVE_ID) or [])
+            chain.append(sel)
+            FRAMES[ACTIVE_ID] = chain
+            ok(req_id, {"frame": sel, "depth": len(chain), "chain": chain})
+
+        elif cmd == "frame_exit":
+            chain = list(FRAMES.get(ACTIVE_ID) or [])
+            left = chain.pop() if chain else None
+            FRAMES[ACTIVE_ID] = chain
+            ok(req_id, {"exited": left, "depth": len(chain), "chain": chain})
+
+        elif cmd == "frame_main":
+            FRAMES[ACTIVE_ID] = []
+            ok(req_id, {"depth": 0, "chain": []})
+
+        elif cmd == "frame_status":
+            chain = list(FRAMES.get(ACTIVE_ID) or [])
+            ok(req_id, {"depth": len(chain), "chain": chain, "tab_id": ACTIVE_ID})
+
+        elif cmd == "profile_status":
+            ok(req_id, {
+                "persistent": PERSISTENT,
+                "profile_dir": _profile_dir() or "",
+                "download_dir": str(_download_dir()),
+            })
+
         elif cmd == "read_url_new_page":
+
 
             url = args.get("url", "")
             if not url:
@@ -472,7 +627,10 @@ def handle(req):
                     except Exception:
                         pass
                 TABS = {}
-                if BROWSER:
+                FRAMES.clear()
+                if PERSISTENT and CONTEXT:
+                    CONTEXT.close()
+                elif BROWSER and not PERSISTENT:
                     BROWSER.close()
                 if P:
                     P.stop()
@@ -480,6 +638,8 @@ def handle(req):
                 pass
             PAGE = None
             BROWSER = None
+            CONTEXT = None
+            PERSISTENT = False
             P = None
             ACTIVE_ID = "0"
             ok(req_id, {"closed": True})

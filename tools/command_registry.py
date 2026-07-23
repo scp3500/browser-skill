@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""command_registry.py — v2.6.0 命令注册表（用于 contract 测试）"""
+"""command_registry.py — v2.7.0 命令注册表（用于 contract 测试）"""
 from dataclasses import dataclass, field
 
 
@@ -65,6 +65,15 @@ COMMANDS: dict[str, CommandSpec] = {
     "click_role": CommandSpec(name="click_role", needs_daemon=True, smoke_args=["button"]),
     "click_label": CommandSpec(name="click_label", needs_daemon=True, smoke_args=["Name"]),
     "click_css": CommandSpec(name="click_css", needs_daemon=True, smoke_args=["body"]),
+
+    # upload / download / iframe / profile (v2.7)
+    "upload": CommandSpec(name="upload", needs_daemon=True, smoke_args=["input[type=file]", "x.txt"]),
+    "download": CommandSpec(name="download", needs_daemon=True),
+    "frame_enter": CommandSpec(name="frame_enter", needs_daemon=True, smoke_args=["iframe"]),
+    "frame_exit": CommandSpec(name="frame_exit", needs_daemon=True),
+    "frame_main": CommandSpec(name="frame_main", needs_daemon=True),
+    "frame_status": CommandSpec(name="frame_status", needs_daemon=True),
+    "profile_status": CommandSpec(name="profile_status", needs_daemon=True),
 
     # trace 命令
     "trace_list": CommandSpec(name="trace_list", needs_provider=False, config_command=True),

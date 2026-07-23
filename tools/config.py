@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""config.py — v2.6.0 配置体系：加载、校验、查询、preset"""
+"""config.py — v2.7.0 配置体系：加载、校验、查询、preset"""
 
 import os, sys, yaml, json, shutil, re
 from pathlib import Path

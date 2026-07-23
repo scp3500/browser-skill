@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""contract.py — v2.6.0 统一 contract 模型"""
+"""contract.py — v2.7.0 统一 contract 模型"""
 from dataclasses import dataclass, field
 from typing import Any, Optional
 

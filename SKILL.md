@@ -1,7 +1,7 @@
 ---
 name: browser
 description: 浏览器自动化工具集：打开网页、搜索、读取、诊断、安全点击、预设工作流、配置面板、并行读取
-version: 2.6.0
+version: 2.7.0
 ---
 
 # Browser Skill
@@ -34,7 +34,19 @@ version: 2.6.0
 | `wait_url <pattern> [--exact]` | 等待 URL |
 | `scroll_into_view <css>` | 滚到元素可见 |
 
-`click_id` / `click_text` 语义不变。登录态随 daemon 生命周期，见 `docs/ARCHITECTURE.md`。
+`click_id` / `click_text` 语义不变。
+
+### 1b. Files, iframe & profile (v2.7)
+| Command | Description |
+|---------|-------------|
+| `upload <selector> <file>` | 上传本地文件（`set_input_files`）|
+| `download [--click sel] [--path out]` | 捕获下载并保存 |
+| `frame_enter <css>` | 进入 iframe |
+| `frame_exit` / `frame_main` | 退出一层 / 回到主文档 |
+| `frame_status` | 当前 frame 链 |
+| `profile_status` | 是否持久 profile + 路径 |
+
+持久登录：设置环境变量 `BROWSER_PROFILE_DIR`（或 `BROWSER_USER_DATA_DIR`）后重启 daemon。下载目录：`BROWSER_DOWNLOAD_DIR`（默认 `%LOCALAPPDATA%\Pirowser\downloads`）。
 
 ## 2. Reading and Search
 | Command | Description |

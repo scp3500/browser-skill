@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""workflow_runner.py — v2.6.0 可配置工作流执行器"""
+"""workflow_runner.py — v2.7.0 可配置工作流执行器"""
 import sys, os, json, yaml, time
 from pathlib import Path
 from datetime import datetime

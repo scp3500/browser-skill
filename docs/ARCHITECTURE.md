@@ -1,4 +1,4 @@
-# Architecture (v2.6.0)
+# Architecture (v2.7.0)
 
 ## Layers
 
@@ -68,4 +68,8 @@ User config (Windows): `%LOCALAPPDATA%\Pi\browser\config.yaml`
 - `browser kill` / `restart` / crash **drops cookies and login state**.
 - All tabs share one browser context (same cookie jar).
 - `read_urls_parallel` / `new_page_for_url` open temporary pages on the same browser, outside the tab map, and close them after read.
-- Long-lived login is not supported yet (future: `launch_persistent_context`). For real Chrome login state, prefer dokobot/`--local` against your everyday browser.
+- **Optional persistent profile**: set `BROWSER_PROFILE_DIR` (or `BROWSER_USER_DATA_DIR`) before starting the daemon. Uses Playwright `launch_persistent_context` so cookies survive `kill`/`restart` for that directory.
+- Without `BROWSER_PROFILE_DIR`, profile is still ephemeral for the process lifetime.
+- Downloads default to `%LOCALAPPDATA%\Pirowser\downloads` (override with `BROWSER_DOWNLOAD_DIR`).
+- iframe: per-tab selector chain via `frame_enter` / `frame_exit` / `frame_main`.
+- For your everyday logged-in Chrome, dokobot/`--local` may still be simpler than managing a skill profile dir.

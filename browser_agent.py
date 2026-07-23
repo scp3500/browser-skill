@@ -30,6 +30,7 @@ AUTO_OBSERVE_CMDS = {
     "fill", "fill_id", "fill_label",
     "press", "scroll", "select",
     "new_tab", "switch_tab", "click_role", "click_label",
+    "upload", "frame_enter",
 }
 
 DEFAULT_OBSERVE_ARGS = {
@@ -105,6 +106,14 @@ def _summarize(result, tool, cmd):
             return f"[browser.close_tab] closed={r.get('closed', '')} active={r.get('active', '')}"
         elif cmd in ("wait_selector", "wait_url", "scroll_into_view"):
             return f"[browser.{cmd}] OK"
+        elif cmd == "upload":
+            return f"[browser.upload] files={r.get('files', [])}"
+        elif cmd == "download":
+            return f"[browser.download] {r.get('path', '')}"
+        elif cmd in ("frame_enter", "frame_exit", "frame_main", "frame_status"):
+            return f"[browser.{cmd}] depth={r.get('depth', '?')}"
+        elif cmd == "profile_status":
+            return f"[browser.profile_status] persistent={r.get('persistent')}"
         elif cmd in ("fill", "fill_id"):
             return f"[browser.{cmd}] OK"
         elif cmd == "press":

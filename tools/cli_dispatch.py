@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cli_dispatch.py — v2.6.0 CLI 调度层。统一路由到 commands.run_*"""
+"""cli_dispatch.py — v2.7.0 CLI 调度层。统一路由到 commands.run_*"""
 import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -203,6 +203,43 @@ def dispatch(args: list[str]) -> BrowserResult:
                 wait = False; i += 1; continue
             i += 1
         result = run_click_css(selector, timeout, wait)
+    elif cmd == "upload":
+        selector = rest[0] if rest else ""
+        files = rest[1] if len(rest) > 1 else ""
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--file" and i + 1 < len(rest):
+                files = rest[i + 1]; i += 2; continue
+            if rest[i] == "--selector" and i + 1 < len(rest):
+                selector = rest[i + 1]; i += 2; continue
+            i += 1
+        if not files and len(rest) >= 2 and not rest[1].startswith("--"):
+            files = rest[1]
+        result = run_upload(selector, files)
+    elif cmd == "download":
+        selector = ""; path = ""; timeout = "30000"
+        i = 0
+        while i < len(rest):
+            if rest[i] in ("--path", "--save") and i + 1 < len(rest):
+                path = rest[i + 1]; i += 2; continue
+            if rest[i] == "--timeout" and i + 1 < len(rest):
+                timeout = rest[i + 1]; i += 2; continue
+            if rest[i] in ("--click", "--selector") and i + 1 < len(rest):
+                selector = rest[i + 1]; i += 2; continue
+            if not rest[i].startswith("--") and not selector:
+                selector = rest[i]
+            i += 1
+        result = run_download(selector, path, timeout)
+    elif cmd == "frame_enter":
+        result = run_frame_enter(rest[0] if rest else "")
+    elif cmd == "frame_exit":
+        result = run_frame_exit()
+    elif cmd == "frame_main":
+        result = run_frame_main()
+    elif cmd == "frame_status":
+        result = run_frame_status()
+    elif cmd == "profile_status":
+        result = run_profile_status()
     else:
         return BrowserResult(status="error", error_code="invalid_mode", provider_used="none",
                               message=f"unknown command: {cmd}")

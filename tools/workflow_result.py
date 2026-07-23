@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""workflow_result.py — v2.6.0 统一 workflow result contract"""
+"""workflow_result.py — v2.7.0 统一 workflow result contract"""
 from dataclasses import dataclass, field
 from typing import Optional
 

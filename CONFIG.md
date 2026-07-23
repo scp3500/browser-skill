@@ -1,4 +1,4 @@
-# Browser Skill — Config System (v2.6.0)
+# Browser Skill — Config System (v2.7.0)
 
 ## 配置路径
 
