@@ -155,9 +155,10 @@ def ensure_page():
         if profile:
             Path(profile).mkdir(parents=True, exist_ok=True)
             PERSISTENT = True
+            headless = os.environ.get("BROWSER_HEADLESS", "1").strip().lower() not in ("0", "false", "no")
             CONTEXT = P.chromium.launch_persistent_context(
                 user_data_dir=profile,
-                headless=True,
+                headless=headless,
                 accept_downloads=True,
                 args=launch_args,
             )
@@ -167,7 +168,8 @@ def ensure_page():
             _apply_init(page)
         else:
             PERSISTENT = False
-            BROWSER = P.chromium.launch(headless=True, args=launch_args)
+            headless = os.environ.get("BROWSER_HEADLESS", "1").strip().lower() not in ("0", "false", "no")
+            BROWSER = P.chromium.launch(headless=headless, args=launch_args)
             CONTEXT = None
             page = BROWSER.new_page()
             _apply_init(page)
