@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# browser CLI wrapper (Git Bash / Linux / macOS)
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+exec python -X utf8 "$ROOT/browser_daemon.py" "$@"

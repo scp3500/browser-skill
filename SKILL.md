@@ -37,6 +37,7 @@ version: 2.5.1
 | `diagnose` | 截图诊断，检查弹窗/验证码/错误 |
 | `diagnose_and_recover` | 诊断 → 发现 popup → 关闭 → 再诊断 |
 | `close_popups` | 保守关闭弹窗（只点 Close/No thanks 等，跳过 Pay/Delete）|
+| `screenshot_ask [query]` | 截图并用 OpenVL 描述/诊断 |
 
 自动恢复：失败 URL 后 daemon 自动重置 page，无需 `browser kill`。
 
@@ -61,9 +62,12 @@ version: 2.5.1
 | `config_web_status` | 查询 Web UI 状态 |
 | `config_web_stop` | 停止 Web UI |
 
-## 6. Trace
+## 6. Daemon & Trace
 | Command | Description |
 |---------|-------------|
+| `status` | daemon 是否在跑 |
+| `kill` / `restart` | 停止 / 重启 daemon |
+| `logs` | 查看 daemon 日志 |
 | `trace_list` | 最近 20 个 trace |
 | `trace_show <run_id>` | 查看 trace 详情（含 workflow steps、Provider used、Child trace）|
 

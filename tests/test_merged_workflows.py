@@ -1,4 +1,4 @@
-"""test_v22_workflows.py — v2.2 新 workflow 测试"""
+"""test_merged_workflows.py — 合并后的核心 workflow 测试"""
 import sys, os, pytest
 from unittest.mock import patch, MagicMock
 

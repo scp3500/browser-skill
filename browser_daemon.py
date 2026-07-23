@@ -705,7 +705,7 @@ def main():
         print(f.readline() or "empty"); s.close()
         return
 
-    # v2.4 config commands (via cli_dispatch)
+    # config commands (via cli_dispatch)
     from tools.cli_dispatch import dispatch, _ensure_trace
     from tools.render import render_text
     handled = {"config_path", "config_show", "config_validate", "config_set",
@@ -717,7 +717,7 @@ def main():
         print(render_text(result))
         return
 
-    # v2.3 workflow commands (via cli_dispatch)
+    # workflow commands (via cli_dispatch)
     from tools.cli_dispatch import dispatch as _dispatch
     from tools.cli_dispatch import _ensure_trace as _ensure
     from tools.render import render_text as _render
@@ -932,7 +932,7 @@ def main():
         r = _send_workflow("visual_search_check", {"goal": q, "question": q})
         print_result(r); return
 
-    # v2.2 workflow commands
+    # compound workflow commands
     rest = args[1:]
     if args[0] == "read_url":
         url = rest[0] if rest else ""

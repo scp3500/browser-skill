@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""test_v252.py — v2.5.2 search + extraction + excerpt tests"""
+"""test_search_extract.py — search + extraction + excerpt tests"""
 import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
